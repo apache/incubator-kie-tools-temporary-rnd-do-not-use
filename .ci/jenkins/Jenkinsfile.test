@@ -22,7 +22,7 @@ pipeline {
                 java --version
                 mvn --version
                 node --version
-                sudo apt install npm
+                apt install npm
                 npm install -g pnpm@8.7.0
                 go version
                 pnpm --version
