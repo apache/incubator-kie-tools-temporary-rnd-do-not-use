@@ -20,9 +20,6 @@ pipeline {
                 sh """#!/bin/bash -el
                 java --version
                 mvn --version
-                
-                apt-get 
-                
                 node --version
                 go version
                 pnpm --version
