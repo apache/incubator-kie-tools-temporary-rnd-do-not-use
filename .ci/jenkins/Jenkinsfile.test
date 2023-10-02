@@ -18,9 +18,12 @@ pipeline {
         stage('Pre-check') {
             steps {
                 sh """#!/bin/bash -el
+                whoami
                 java --version
                 mvn --version
                 node --version
+                nvm install v18.14.0
+                npm install -g pnpm@8.7.0
                 go version
                 pnpm --version
                 """.trim()
