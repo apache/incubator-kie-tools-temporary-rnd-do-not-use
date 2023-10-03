@@ -2,8 +2,8 @@ pipeline {
     agent {
         label 'ubuntu'
         docker {
-            image 'quay.io/kiegroup/kie-tools-ci-build:PR-4-build-2'
-            args '-v /var/run/docker.sock:/var/run/docker.sock --shm-size=1gb --cap-add=SYS_ADMIN'
+            image 'quay.io/kie-tools/kie-tools-ci-build:latest'
+            args '-v /var/run/docker.sock:/var/run/docker.sock --group-add docker --group-add input --group-add render --shm-size=1gb --cap-add=SYS_ADMIN'
         }
     }
 
