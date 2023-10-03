@@ -3,7 +3,7 @@ pipeline {
         label 'ubuntu'
         docker {
             image 'quay.io/kiegroup/kie-tools-ci-build:PR-4-build-2'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
+            args '-v /var/run/docker.sock:/var/run/docker.sock --shm-size=1gb --cap-add=SYS_ADMIN'
         }
     }
 
@@ -23,6 +23,51 @@ pipeline {
                 pnpm --version
                 """.trim()
             }
+        }
+    }
+
+    stage("Setup PNPM") {
+        steps {
+            sh """#!/bin/bash -el
+            pnpm config set network-timeout 1000000
+            pnpm -r exec 'bash' '-c' 'mkdir .mvn'
+            pnpm -r exec 'bash' '-c' 'echo -B > .mvn/maven.config'
+            pnpm -r exec 'bash' '-c' 'echo -ntp >> .mvn/maven.config'
+            pnpm -r exec 'bash' '-c' 'echo -Xmx2g > .mvn/jvm.config'
+            """.trim()
+        }
+    }
+
+    stage("PNPM Bootstrap") {
+        steps {
+            sh """#!/bin/bash -el
+            pnpm bootstrap
+            """.trim()
+        }
+    }
+
+    stage('Build FULL') {
+        steps {
+            sh """#!/bin/bash -el
+            export WEBPACK__minimize="false"
+            export WEBPACK__tsLoaderTranspileOnl="false"
+            export KIE_TOOLS_BUILD__runLinters="true"
+            export KIE_TOOLS_BUILD__runTests="true"
+            export KIE_TOOLS_BUILD__runIntegrationTests="false"
+            export KIE_TOOLS_BUILD__buildContainerImages="true"
+            export KIE_TOOLS_BUILD__buildExamples="true"
+            export KIE_TOOLS_BUILD__ignoreTestFailures="false"
+            export KIE_TOOLS_BUILD__ignoreIntegrationTestFailures="false"
+            export START_SERVER_AND_TEST_INSECURE="true"
+            pnpm -r --workspace-concurrency=1 build:prod
+            """.trim()
+        }
+    }
+
+    post {
+        always {
+            // Clean workspace
+            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }
 }
