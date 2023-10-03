@@ -76,14 +76,14 @@ pipeline {
                 '''
 
                 echo 'Test tools'
-                sh '''
+                sh '''#!/bin/bash -el
                     java -version
                     mvn --version
                     node --version
                     npm --version
                     pnpm --version
                     go version
-                '''
+                '''.trim()
 
                 echo 'Test docker'
                 sh '''
