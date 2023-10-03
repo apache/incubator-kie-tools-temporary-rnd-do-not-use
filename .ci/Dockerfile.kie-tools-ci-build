@@ -1,0 +1,128 @@
+FROM ubuntu:latest
+
+RUN apt-get update && apt-get install -y \
+    sudo bash wget gpg locales uidmap apt-transport-https ca-certificates curl software-properties-common \
+    && rm -rf /var/lib/apt/lists/* \
+	&& localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+ENV LANG en_US.utf8
+
+# Google Chrome repository setup
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmour -o /usr/share/keyrings/chrome-keyring.gpg
+RUN sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list'
+
+# Docker repository setup
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install dependencies
+RUN apt-get update && apt-get install -yy \
+build-essential \
+dbus-user-session \
+google-chrome-stable \
+firefox \
+gir1.2-appindicator3-0.1 \
+libappindicator3-dev \
+libgtk-3-dev \
+libssl-dev \
+libxi6 \
+libnss3 \
+libgconf-2-4 \
+openjdk-11-jdk \
+git \
+jq \
+vim \
+make \
+unzip \
+docker-ce \
+docker-compose \
+xvfb \
+fluxbox
+
+# Install chromedriver
+RUN wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/117.0.5938.132/linux64/chromedriver-linux64.zip
+RUN unzip /tmp/chromedriver-linux64.zip -d /tmp && mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
+
+# Increase inotify watches
+RUN echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+
+# User setup (non-root)
+RUN groupadd -g 910 nonrootuser && useradd --create-home -u 910 -g 910 nonrootuser && \
+    usermod -s /bin/bash nonrootuser && \
+    usermod -aG docker nonrootuser && \
+    chown -R nonrootuser:nonrootuser /home/nonrootuser && \
+    echo "nonrootuser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+ENV HOME=/home/nonrootuser
+ENV BASH_ENV=/home/nonrootuser/.bashrc
+
+USER nonrootuser
+
+# Java setup
+ENV JAVA_HOME=/usr/lib/jvm/default-java
+
+# PNPM VERSION
+# Provided by command line `--build-arg PNPM_VERSION_ARG=....`
+ARG PNPM_VERSION_ARG
+
+ENV PNPM_VERSION=$PNPM_VERSION_ARG
+
+RUN echo "PNPM_VERSION ${PNPM_VERSION}"
+
+# GO VERSION
+# Provided by command line `--build-arg GO_VERSION_ARG=....`
+ARG GO_VERSION_ARG
+
+ENV GO_VERSION=$GO_VERSION_ARG
+
+RUN echo "GO_VERSION ${GO_VERSION}"
+
+
+# NODE VERSION
+# Provided by command line `--build-arg GO_VERSION_ARG=....`
+ARG NODE_VERSION_ARG
+
+ENV NODE_VERSION=$NODE_VERSION_ARG
+
+RUN echo "NODE_VERSION ${NODE_VERSION}"
+
+# NVM setup
+RUN wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash && \
+    echo 'export NVM_DIR="${HOME}/.nvm"' | sudo tee /etc/profile.d/nvm.sh && \
+    echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' | sudo tee -a /etc/profile.d/nvm.sh && \
+    echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' | sudo tee -a /etc/profile.d/nvm.sh && \
+    echo "source /etc/profile.d/nvm.sh" >> $HOME/.bashrc
+
+# Node setup
+RUN bash -c 'source $HOME/.nvm/nvm.sh && \
+             nvm install $NODE_VERSION'
+
+# PNPM setup
+RUN bash -c 'source $HOME/.nvm/nvm.sh && \
+             npm install -g pnpm@$PNPM_VERSION'
+
+# Maven setup
+RUN wget https://archive.apache.org/dist/maven/maven-3/3.8.6/binaries/apache-maven-3.8.6-bin.tar.gz -P /tmp && \
+    sudo tar xzf /tmp/apache-maven-3.8.6-bin.tar.gz -C /opt && \
+    sudo ln -s /opt/apache-maven-3.8.6 /opt/maven && \
+    echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' | sudo tee /etc/profile.d/maven.sh && \
+    echo 'export M2_HOME=/opt/maven' | sudo tee -a /etc/profile.d/maven.sh && \
+    echo 'export MAVEN_HOME=${M2_HOME}' | sudo tee -a /etc/profile.d/maven.sh && \
+    echo 'export PATH=${M2_HOME}/bin:${PATH}' | sudo tee -a /etc/profile.d/maven.sh && \
+    echo "source /etc/profile.d/maven.sh" >> $HOME/.bashrc
+
+# Golang setup
+RUN wget "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -P /tmp && \
+    sudo tar -C /usr/local -xzf /tmp/go*.tar.gz && \
+    sudo chown -R nonrootuser:nonrootuser /usr/local/go && \
+    sudo chmod -R 755 /usr/local/go && \
+    echo 'export GOPATH=${HOME}/go' | sudo tee /etc/profile.d/go.sh && \
+    echo 'export PATH=${PATH}:/usr/local/go/bin:${GOPATH}/bin' | sudo tee -a /etc/profile.d/go.sh && \
+    echo "source /etc/profile.d/go.sh" >> $HOME/.bashrc
+
+# Aliases
+RUN echo alias podman="docker" >> $HOME/.bashrc
+RUN echo alias podman="docker" >> $HOME/.profile
+
+# Env vars
+ENV DISPLAY=":99""
+ENV NODE_OPTIONS="--max_old_space_size=4096"
