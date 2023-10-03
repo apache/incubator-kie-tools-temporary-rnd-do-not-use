@@ -19,7 +19,6 @@ RUN apt-get update && apt-get install -yy \
 build-essential \
 dbus-user-session \
 google-chrome-stable \
-firefox \
 gir1.2-appindicator3-0.1 \
 libappindicator3-dev \
 libgtk-3-dev \
@@ -38,16 +37,20 @@ docker-compose \
 xvfb \
 fluxbox
 
+# Install firefox
+RUN wget -O /tmp/firefox-latest.tar.bz2 "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" && \
+    tar xjf /tmp/firefox-latest.tar.bz2 -C /tmp && ls /tmp && mv /tmp/firefox /opt/firefox-latest && \
+    ln -s /opt/firefox-latest/firefox /usr/bin/firefox
+
 # Install chromedriver
-RUN wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/117.0.5938.132/linux64/chromedriver-linux64.zip
-RUN unzip /tmp/chromedriver-linux64.zip -d /tmp && mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
+RUN wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/117.0.5938.132/linux64/chromedriver-linux64.zip && \
+    unzip /tmp/chromedriver-linux64.zip -d /tmp && mv /tmp/chromedriver-linux64/chromedriver /usr/bin/
 
 # Increase inotify watches
 RUN echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
 
 # User setup (non-root)
-RUN groupadd -g 910 nonrootuser && useradd --create-home -u 910 -g 910 nonrootuser && \
-    usermod -s /bin/bash nonrootuser && \
+RUN groupadd -g 910 nonrootuser && useradd --create-home -u 910 -g 910 -s /bin/bash nonrootuser && \
     usermod -aG docker nonrootuser && \
     chown -R nonrootuser:nonrootuser /home/nonrootuser && \
     echo "nonrootuser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
