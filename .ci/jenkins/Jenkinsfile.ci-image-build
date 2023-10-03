@@ -10,7 +10,7 @@ pipeline {
     environment {
         DOCKER_CONFIG = "${WORKSPACE}/.docker"
 
-        IMAGE_NAME = "quay.io/kiegroup/kie-tools-ci-build"
+        IMAGE_NAME = "quay.io/kie-tools/kie-tools-ci-build"
         IMAGE_TAG = "latest"
         IMAGE_NAME_TAG = "${env.IMAGE_NAME}:${env.IMAGE_TAG}"
 
