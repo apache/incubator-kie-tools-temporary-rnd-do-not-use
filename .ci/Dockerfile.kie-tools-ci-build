@@ -124,5 +124,5 @@ RUN echo alias podman="docker" >> $HOME/.bashrc
 RUN echo alias podman="docker" >> $HOME/.profile
 
 # Env vars
-ENV DISPLAY=":99""
+ENV DISPLAY=":99"
 ENV NODE_OPTIONS="--max_old_space_size=4096"
