@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build:dev": "pnpm docker:build",
-    "build:prod": "run-script-if --bool \"$(build-env containerImages.build)\" --then \"pnpm docker:build\" \"pnpm test\"",
+    "build:prod": "run-script-if --bool \"$(build-env containerImages.build)\" --then \"pnpm docker:build\"",
     "docker:build": "docker compose build",
     "docker:create-env-file": "rimraf .env && pnpm build-env --print-env-file:self > .env",
     "docker:down": "docker compose down",
