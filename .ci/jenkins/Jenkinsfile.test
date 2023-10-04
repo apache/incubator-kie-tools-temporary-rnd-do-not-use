@@ -30,7 +30,6 @@ pipeline {
         stage('Pre-check') {
             steps {
                 sh """#!/bin/bash -el
-                whoami
                 java --version
                 mvn --version
                 node --version
@@ -73,7 +72,7 @@ pipeline {
                 export KIE_TOOLS_BUILD__ignoreTestFailures="false"
                 export KIE_TOOLS_BUILD__ignoreIntegrationTestFailures="false"
                 export START_SERVER_AND_TEST_INSECURE="true"
-                pnpm -r --workspace-concurrency=1 build:prod
+                pnpm -r --workspace-concurrency=2 build:prod
                 """.trim()
             }
         }
@@ -81,6 +80,21 @@ pipeline {
 
     post {
         always {
+            // Tests reports
+            junit 'packages/**/dist-tests/junit-report*.xml'
+            junit 'examples/**/dist-tests/junit-report*.xml'
+            junit 'packages/**/target/surefire-reports/TEST-*.xml'
+            junit 'examples/**/target/surefire-reports/TEST-*.xml'
+
+            // Integration tests reports
+            //junit 'packages/**/dist-it-tests/junit-report*.xml'
+            //junit 'examples/**/dist-it-tests/junit-report*.xml'
+            //junit 'packages/**/target/failsafe-reports/TEST-*.xml'
+            //junit 'examples/**/target/failsafe-reports/TEST-*.xml'
+
+            // Artifacts
+            archiveArtifacts artifacts: 'packages/**/dist', fingerprint: true
+
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
