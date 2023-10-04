@@ -18,7 +18,7 @@ pipeline {
     agent {
         docker {
             image 'quay.io/kie-tools/kie-tools-ci-build:latest'
-            args '-v /var/run/docker.sock:/var/run/docker.sock --group-add docker --group-add input --group-add render --shm-size=1gb --cap-add=SYS_ADMIN'
+            args '--runtime=sysbox-runc --shm-size=1gb --entrypoint="" --group-add docker --group-add input --group-add render'
         }
     }
 
@@ -93,7 +93,7 @@ pipeline {
             //junit 'examples/**/target/failsafe-reports/TEST-*.xml'
 
             // Artifacts
-            archiveArtifacts artifacts: 'packages/**/dist', fingerprint: true
+            //archiveArtifacts artifacts: 'packages/**/dist', fingerprint: true
 
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
