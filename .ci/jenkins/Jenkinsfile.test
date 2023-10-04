@@ -81,10 +81,10 @@ pipeline {
     post {
         always {
             // Tests reports
-            junit 'packages/**/dist-tests/junit-report*.xml'
-            junit 'examples/**/dist-tests/junit-report*.xml'
-            junit 'packages/**/target/surefire-reports/TEST-*.xml'
-            junit 'examples/**/target/surefire-reports/TEST-*.xml'
+            //junit 'packages/**/dist-tests/junit-report*.xml'
+            //junit 'examples/**/dist-tests/junit-report*.xml'
+            //junit 'packages/**/target/surefire-reports/TEST-*.xml'
+            //junit 'examples/**/target/surefire-reports/TEST-*.xml'
 
             // Integration tests reports
             //junit 'packages/**/dist-it-tests/junit-report*.xml'
