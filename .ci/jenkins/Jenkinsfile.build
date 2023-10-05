@@ -114,7 +114,7 @@ pipeline {
             //archiveArtifacts artifacts: 'packages/**/dist', fingerprint: true
 
             // Clean workspace
-            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            cleanWs(deleteDirs: true)
         }
     }
 }
