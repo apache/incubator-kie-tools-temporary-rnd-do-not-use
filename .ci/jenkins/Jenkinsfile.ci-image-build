@@ -24,16 +24,18 @@ pipeline {
         label 'ubuntu'
     }
 
+    parameters {
+        string(description: 'Node version to install', name: 'NODE_VERSION', defaultValue: '18.17.0')
+        string(description: 'PNPM version to install', name: 'PNPM_VERSION', defaultValue: '8.7.0')
+        string(description: 'GO version to install', name: 'GO_VERSION', defaultValue: '1.21.1')
+    }
+
     environment {
         DOCKER_CONFIG = "${WORKSPACE}/.docker"
 
         IMAGE_NAME = "quay.io/kie-tools/kie-tools-ci-build"
         IMAGE_TAG = "latest"
         IMAGE_NAME_TAG = "${env.IMAGE_NAME}:${env.IMAGE_TAG}"
-
-        NODE_VERSION = "18.17.0"
-        PNPM_VERSION = "8.7.0"
-        GO_VERSION = "1.21.1"
     }
 
     options {
@@ -44,8 +46,6 @@ pipeline {
         stage('Build image') {
             steps {
                 script {
-                    sh 'printenv'
-
                     currentBuild.displayName = env.IMAGE_TAG
 
                     cloud.loginContainerRegistry('quay.io', 'quay-io-kie-tools-token')
@@ -56,15 +56,8 @@ pipeline {
                         checkout scm
 
                         sh """
-                            docker build --build-arg NODE_VERSION_ARG=${env.NODE_VERSION} --build-arg PNPM_VERSION_ARG=${env.PNPM_VERSION} --build-arg GO_VERSION_ARG=${env.GO_VERSION} -t ${env.IMAGE_NAME_TAG} -f .ci/Dockerfile.kie-tools-ci-build .
-                            docker tag ${env.IMAGE_NAME_TAG} ${env.IMAGE_NAME}:${GIT_COMMIT}
-                            docker tag ${env.IMAGE_NAME_TAG} ${env.IMAGE_NAME}:${BRANCH_NAME}-latest
-                        """
-
-                        sh """
+                            docker build --build-arg NODE_VERSION_ARG=${NODE_VERSION} --build-arg PNPM_VERSION_ARG=${PNPM_VERSION} --build-arg GO_VERSION_ARG=${GO_VERSION} -t ${env.IMAGE_NAME_TAG} -f .ci/Dockerfile.kie-tools-ci-build .
                             docker --config ${DOCKER_CONFIG} push ${env.IMAGE_NAME_TAG}
-                            docker --config ${DOCKER_CONFIG} push ${env.IMAGE_NAME}:${GIT_COMMIT}
-                            docker --config ${DOCKER_CONFIG} push ${env.IMAGE_NAME}:${BRANCH_NAME}-latest
                         """
                     }
                 }
@@ -73,7 +66,7 @@ pipeline {
                 always {
                     script {
                         sh "rm -rf ${DOCKER_CONFIG}"
-                        sh 'docker logout quay.io'
+                        sh "docker logout quay.io"
                     }
                 }
             }
@@ -86,27 +79,21 @@ pipeline {
                 }
             }
             steps {
-                echo 'Debug basics'
-                sh '''
-                    locale
-                    printenv
-                '''
-
                 echo 'Test tools'
-                sh '''#!/bin/bash -el
+                sh """#!/bin/bash -el
                     java -version
                     mvn --version
                     node --version
                     npm --version
                     pnpm --version
                     go version
-                '''.trim()
+                """.trim()
 
                 echo 'Test docker'
-                sh '''
+                sh """
                     docker info
                     docker run hello-world
-                '''
+                """
             }
         }
     }
