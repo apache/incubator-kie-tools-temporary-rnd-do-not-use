@@ -45,6 +45,7 @@ git \
 jq \
 vim \
 make \
+zip \
 unzip \
 xvfb \
 fluxbox
