@@ -56,7 +56,7 @@ pipeline {
                         checkout scm
 
                         sh """
-                            docker build --build-arg NODE_VERSION_ARG=${NODE_VERSION} --build-arg PNPM_VERSION_ARG=${PNPM_VERSION} --build-arg GO_VERSION_ARG=${GO_VERSION} -t ${env.IMAGE_NAME_TAG} -f .ci/Dockerfile.kie-tools-ci-build .
+                            docker build --build-arg NODE_VERSION_ARG=${params.NODE_VERSION} --build-arg PNPM_VERSION_ARG=${params.PNPM_VERSION} --build-arg GO_VERSION_ARG=${params.GO_VERSION} -t ${env.IMAGE_NAME_TAG} -f .ci/Dockerfile.kie-tools-ci-build .
                             docker --config ${DOCKER_CONFIG} push ${env.IMAGE_NAME_TAG}
                         """
                     }
