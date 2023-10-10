@@ -75,7 +75,6 @@ pipeline {
             agent {
                 docker {
                     image env.IMAGE_NAME_TAG
-                    args '-v /var/run/docker.sock:/var/run/docker.sock --group-add docker --group-add input --group-add render'
                 }
             }
             steps {
@@ -88,12 +87,6 @@ pipeline {
                     pnpm --version
                     go version
                 """.trim()
-
-                echo 'Test docker'
-                sh """
-                    docker info
-                    docker run hello-world
-                """
             }
         }
     }
