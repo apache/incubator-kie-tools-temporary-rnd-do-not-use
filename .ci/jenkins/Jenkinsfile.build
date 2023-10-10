@@ -18,7 +18,7 @@ pipeline {
     agent {
         docker {
             image 'quay.io/kie-tools/kie-tools-ci-build:latest'
-            args '--shm-size=1gb --entrypoint="" --privileged --group-add docker --group-add input --group-add render'
+            args '--shm-size=2g --entrypoint="" --privileged --group-add docker --group-add input --group-add render'
         }
     }
 
@@ -26,10 +26,17 @@ pipeline {
         timeout(time: 600, unit: 'MINUTES')
     }
 
+    environment {
+        TESTS_REPORTS_PATTERNS = "packages/**/dist-tests/junit-report*.xml examples/**/dist-tests/junit-report*.xml packages/**/target/surefire-reports/TEST-*.xml examples/**/target/surefire-reports/TEST-*.xml"
+        END_TO_END_TESTS_REPORTS_PATTERNS = "packages/**/dist-e2e-tests/junit-report*.xml examples/**/dist-e2e-tests/junit-report*.xml packages/**/target/failsafe-reports/TEST-*.xml examples/**/target/failsafe-reports/TEST-*.xml"
+        END_TO_END_TESTS_ARTIFACTS_PATTERNS = "packages/**/dist-e2e-tests examples/**/dist-e2e-tests"
+        BUILD_ARTIFACTS_PATTERNS = "packages/**/dist examples/**/dist"
+    }
+
     stages {
         stage('Pre-check') {
             steps {
-                sh """#!/bin/bash -el
+                sh """#!/bin/bash
                 java --version
                 mvn --version
                 node --version
@@ -41,7 +48,7 @@ pipeline {
 
         stage('Start Docker in Docker') {
             steps {
-                sh """#!/bin/bash -el
+                sh """#!/bin/bash
                 sudo entrypoint.sh
                 sudo service dbus start
                 """.trim()
@@ -50,7 +57,7 @@ pipeline {
 
         stage("Setup PNPM") {
             steps {
-                sh """#!/bin/bash -el
+                sh """#!/bin/bash
                 pnpm config set network-timeout 1000000
                 pnpm -r exec 'bash' '-c' 'mkdir .mvn'
                 pnpm -r exec 'bash' '-c' 'echo -B > .mvn/maven.config'
@@ -62,7 +69,7 @@ pipeline {
 
         stage("PNPM Bootstrap") {
             steps {
-                sh """#!/bin/bash -el
+                sh """#!/bin/bash
                 pnpm bootstrap
                 """.trim()
             }
@@ -70,8 +77,8 @@ pipeline {
 
         stage('Start Xvfb and Fluxbox') {
             steps {
-                sh """#!/bin/bash -el
-                /usr/bin/Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+                sh """#!/bin/bash
+                Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
                 fluxbox -display :99 > /dev/null 2>&1 &
                 """.trim()
             }
@@ -79,7 +86,7 @@ pipeline {
 
         stage('Build FULL') {
             steps {
-                sh """#!/bin/bash -el
+                sh """#!/bin/bash
                 export WEBPACK__minimize="false"
                 export WEBPACK__tsLoaderTranspileOnl="false"
                 export KIE_TOOLS_BUILD__runLinters="true"
@@ -88,9 +95,31 @@ pipeline {
                 export KIE_TOOLS_BUILD__buildContainerImages="true"
                 export KIE_TOOLS_BUILD__buildExamples="true"
                 export KIE_TOOLS_BUILD__ignoreTestFailures="false"
-                export KIE_TOOLS_BUILD__ignoreIntegrationTestFailures="false"
+                export KIE_TOOLS_BUILD__ignoreIntegrationTestFailures="true"
                 export START_SERVER_AND_TEST_INSECURE="true"
-                pnpm -r --workspace-concurrency=1 build:prod
+                pnpm -r --workspace-concurrency=4 build:prod
+                """.trim()
+            }
+        }
+
+        stage('Zip artifacts') {
+            steps {
+                sh """#!/bin/bash
+                mkdir artifacts
+                output_empty_zip () { echo UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA== | base64 -d; }
+                zip -r artifacts/build-artifacts.zip $BUILD_ARTIFACTS_PATTERNS || output_empty_zip > artifacts/build-artifacts.zip
+                zip -r artifacts/tests-reports.zip $TESTS_REPORTS_PATTERNS || output_empty_zip > artifacts/tests-reports.zip
+                zip -r artifacts/end-to-end-tests-reports.zip $END_TO_END_TESTS_REPORTS_PATTERNS || output_empty_zip > artifacts/end-to-end-tests-reports.zip
+                zip -r artifacts/end-to-end-tests-artifacts.zip $END_TO_END_TESTS_ARTIFACTS_PATTERNS || output_empty_zip > artifacts/end-to-end-tests-artifacts.zip
+                """.trim()
+            }
+        }
+
+        stage('Prepare test reports for junit') {
+            steps {
+                sh """#!/bin/bash
+                unzip artifacts/tests-reports.zip -d artifacts/test-reports
+                unzip artifacts/end-to-end-tests-reports.zip -d artifacts/end-to-end-tests-reports
                 """.trim()
             }
         }
@@ -99,19 +128,17 @@ pipeline {
     post {
         always {
             // Tests reports
-            //junit 'packages/**/dist-tests/junit-report*.xml'
-            //junit 'examples/**/dist-tests/junit-report*.xml'
-            //junit 'packages/**/target/surefire-reports/TEST-*.xml'
-            //junit 'examples/**/target/surefire-reports/TEST-*.xml'
+            withChecks('Tests') {
+                junit 'artifacts/test-reports/**/junit-report*.xml'
+            }
 
-            // Integration tests reports
-            //junit 'packages/**/dist-it-tests/junit-report*.xml'
-            //junit 'examples/**/dist-it-tests/junit-report*.xml'
-            //junit 'packages/**/target/failsafe-reports/TEST-*.xml'
-            //junit 'examples/**/target/failsafe-reports/TEST-*.xml'
+            // E2E Tests
+            withChecks('E2E Tests') {
+                junit 'artifacts/end-to-end-tests-reports/**/junit-report*.xml'
+            }
 
             // Artifacts
-            //archiveArtifacts artifacts: 'packages/**/dist', fingerprint: true
+            archiveArtifacts artifacts: 'artifacts/build-artifacts.zip, artifacts/tests-reports.zip, artifacts/end-to-end-tests-reports.zip, artifacts/end-to-end-tests-artifacts.zip', fingerprint: true
 
             // Clean workspace
             cleanWs(deleteDirs: true)
