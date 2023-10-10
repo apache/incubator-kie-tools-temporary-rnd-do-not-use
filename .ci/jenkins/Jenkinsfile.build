@@ -95,9 +95,9 @@ pipeline {
                 export KIE_TOOLS_BUILD__buildContainerImages="true"
                 export KIE_TOOLS_BUILD__buildExamples="true"
                 export KIE_TOOLS_BUILD__ignoreTestFailures="false"
-                export KIE_TOOLS_BUILD__ignoreIntegrationTestFailures="true"
+                export KIE_TOOLS_BUILD__ignoreIntegrationTestFailures="false"
                 export START_SERVER_AND_TEST_INSECURE="true"
-                pnpm -r --workspace-concurrency=4 build:prod
+                pnpm -r --workspace-concurrency=1 build:prod
                 """.trim()
             }
         }
