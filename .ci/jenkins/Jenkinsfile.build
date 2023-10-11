@@ -130,12 +130,12 @@ pipeline {
         always {
             // Tests reports
             withChecks('Tests') {
-                junit 'artifacts/test-reports/**/junit-report*.xml'
+                junit allowEmptyResults: true, testResults: 'artifacts/test-reports/**/junit-report*.xml'
             }
 
-            // E2E Tests
+            // E2E Tests reports
             withChecks('E2E Tests') {
-                junit 'artifacts/end-to-end-tests-reports/**/junit-report*.xml'
+                junit allowEmptyResults: true, testResults: 'artifacts/end-to-end-tests-reports/**/junit-report*.xml'
             }
 
             // Artifacts
