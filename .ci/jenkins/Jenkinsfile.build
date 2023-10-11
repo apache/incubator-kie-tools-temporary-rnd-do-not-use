@@ -88,16 +88,16 @@ pipeline {
         stage('Build FULL') {
             steps {
                 sh """#!/bin/bash -el
-                export WEBPACK__minimize="false"
-                export WEBPACK__tsLoaderTranspileOnl="false"
-                export KIE_TOOLS_BUILD__runLinters="true"
-                export KIE_TOOLS_BUILD__runTests="true"
-                export KIE_TOOLS_BUILD__runIntegrationTests="true"
-                export KIE_TOOLS_BUILD__buildContainerImages="true"
-                export KIE_TOOLS_BUILD__buildExamples="true"
-                export KIE_TOOLS_BUILD__ignoreTestFailures="false"
-                export KIE_TOOLS_BUILD__ignoreIntegrationTestFailures="false"
-                export START_SERVER_AND_TEST_INSECURE="true"
+                export WEBPACK__minimize=false
+                export WEBPACK__tsLoaderTranspileOnl=false
+                export KIE_TOOLS_BUILD__runLinters=true
+                export KIE_TOOLS_BUILD__runTests=true
+                export KIE_TOOLS_BUILD__runIntegrationTests=true
+                export KIE_TOOLS_BUILD__buildContainerImages=true
+                export KIE_TOOLS_BUILD__buildExamples=true
+                export KIE_TOOLS_BUILD__ignoreTestFailures=false
+                export KIE_TOOLS_BUILD__ignoreIntegrationTestFailures=false
+                export START_SERVER_AND_TEST_INSECURE=true
                 pnpm -r --workspace-concurrency=1 build:prod
                 """.trim()
             }
@@ -106,7 +106,7 @@ pipeline {
         stage('Zip artifacts') {
             steps {
                 sh """#!/bin/bash -el
-                mkdir artifacts
+                rm -rf artifacts && mkdir artifacts
                 output_empty_zip () { echo UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA== | base64 -d; }
                 zip -r artifacts/build-artifacts.zip $BUILD_ARTIFACTS_PATTERNS || output_empty_zip > artifacts/build-artifacts.zip
                 zip -r artifacts/tests-reports.zip $TESTS_REPORTS_PATTERNS || output_empty_zip > artifacts/tests-reports.zip

@@ -20,7 +20,7 @@
   "scripts": {
     "build:dev": "rimraf dist && webpack --env dev --config webpack.build-resources.config.js && pnpm build:preprocessor && webpack --env dev --config webpack.package-resources.config.js",
     "build:preprocessor": "node dist/preprocessor/preprocessor.js",
-    "build:prod": "pnpm lint && pnpm test && rimraf dist && webpack --config webpack.build-resources.config.js && pnpm build:preprocessor && webpack --config webpack.package-resources.config.js",
+    "build:prod": "pnpm lint && pnpm test && rimraf dist && webpack --config webpack.build-resources.config.js && pnpm build:preprocessor && webpack --config webpack.package-resources.config.js && pnpm test:it",
     "build:productization": "pnpm build:prod",
     "cy:open": "run-script-os",
     "cy:open:darwin:linux": "cypress open --project it-tests --config \"baseUrl=http://localhost:$(build-env standaloneEditors.dev.port)\"",
