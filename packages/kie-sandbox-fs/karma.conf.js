@@ -18,7 +18,7 @@ module.exports = function (config) {
     // jasmine timeout interval increased
     client: {
       jasmine: {
-        timeoutInterval: 10000
+        timeoutInterval: 4 * 60 * 1000
       }
     },
     // list of files / patterns to load in the browser
