@@ -27,7 +27,10 @@ import { I18nDictionariesProvider } from "@kie-tools-core/i18n/dist/react-compon
 import { testScenarioEditorDictionaries, TestScenarioEditorI18nContext, testScenarioEditorI18nDefaults } from "./i18n";
 
 import { getMarshaller } from "@kie-tools/scesim-marshaller";
-import { SceSim__ScenarioSimulationModelType } from "@kie-tools/scesim-marshaller/dist/schemas/scesim-1_8/ts-gen/types";
+import {
+  SceSim__FactMappingType,
+  SceSim__ScenarioSimulationModelType,
+} from "@kie-tools/scesim-marshaller/dist/schemas/scesim-1_8/ts-gen/types";
 
 import { Bullseye } from "@patternfly/react-core/dist/js/layouts/Bullseye";
 import { Button } from "@patternfly/react-core/dist/js/components/Button";
@@ -40,22 +43,21 @@ import { Spinner } from "@patternfly/react-core/dist/js/components/Spinner";
 import { Tabs, Tab, TabTitleIcon, TabTitleText } from "@patternfly/react-core/dist/js/components/Tabs";
 import { TextInput } from "@patternfly/react-core/dist/js/components/TextInput";
 import { Title } from "@patternfly/react-core/dist/js/components/Title";
-import { Tooltip } from "@patternfly/react-core/dist/js/components/Tooltip";
 
 import AddIcon from "@patternfly/react-icons/dist/esm/icons/add-circle-o-icon";
-import CogIcon from "@patternfly/react-icons/dist/esm/icons/cog-icon";
 import CubesIcon from "@patternfly/react-icons/dist/esm/icons/cubes-icon";
-import EditIcon from "@patternfly/react-icons/dist/esm/icons/edit-alt-icon";
 import ErrorIcon from "@patternfly/react-icons/dist/esm/icons/error-circle-o-icon";
-import InfoIcon from "@patternfly/react-icons/dist/esm/icons/info-icon";
 import TableIcon from "@patternfly/react-icons/dist/esm/icons/table-icon";
 
 import ErrorBoundary from "./reactExt/ErrorBoundary";
 import TestScenarioDrawerPanel from "./drawer/TestScenarioDrawerPanel";
+import TestScenarioSideBarMenu from "./sidebar/TestScenarioSideBarMenu";
+import { useTestScenarioEditorI18n } from "./i18n";
 
 import { EMPTY_ONE_EIGHT } from "./resources/EmptyScesimFile";
 
 import "./TestScenarioEditor.css";
+import { Alert } from "@patternfly/react-core/dist/js/components/Alert";
 
 /* Constants */
 
@@ -88,6 +90,19 @@ export enum TestScenarioType {
 }
 
 /* Types */
+
+export type TestScenarioAlert = {
+  enabled: boolean;
+  message?: string;
+  variant: "success" | "danger" | "warning" | "info" | "default";
+};
+
+export type TestScenarioDataObject = {
+  id: string;
+  name: string;
+  customBadgeContent?: string;
+  children?: TestScenarioDataObject[];
+};
 
 export type TestScenarioEditorRef = {
   /* TODO Convert these to Promises */
@@ -215,38 +230,6 @@ function TestScenarioCreationPanel({
   );
 }
 
-function TestScenarioDocksPanel({
-  onDockButtonClicked,
-}: {
-  onDockButtonClicked: (selected: TestScenarioEditorDock) => void;
-}) {
-  return (
-    <div className="kie-scesim-editor--right-sidebar">
-      <Tooltip content={<div>Data Objects tool: It provides a tool to add your Data Objects in Test Scenarios</div>}>
-        <Button
-          variant="plain"
-          onClick={() => onDockButtonClicked(TestScenarioEditorDock.DATA_OBJECT)}
-          icon={<EditIcon />}
-        />
-      </Tooltip>
-      <Tooltip content={<div>Settings</div>}>
-        <Button
-          variant="plain"
-          onClick={() => onDockButtonClicked(TestScenarioEditorDock.SETTINGS)}
-          icon={<CogIcon />}
-        />
-      </Tooltip>
-      <Tooltip content={<div>CheatSheet: In this panel you can found useful information for Test Scenario Usage</div>}>
-        <Button
-          variant="plain"
-          onClick={() => onDockButtonClicked(TestScenarioEditorDock.CHEATSHEET)}
-          icon={<InfoIcon />}
-        />
-      </Tooltip>
-    </div>
-  );
-}
-
 function TestScenarioMainPanel({
   fileName,
   scesimModel,
@@ -256,7 +239,10 @@ function TestScenarioMainPanel({
   scesimModel: { ScenarioSimulationModel: SceSim__ScenarioSimulationModelType };
   updateSettingField: (field: string, value: string) => void;
 }) {
-  const [tab, setTab] = useState<TestScenarioEditorTab>(TestScenarioEditorTab.EDITOR);
+  const { i18n } = useTestScenarioEditorI18n();
+
+  const [alert, setAlert] = useState<TestScenarioAlert>({ enabled: false, variant: "info" });
+  const [tab, setTab] = useState(TestScenarioEditorTab.EDITOR);
 
   const onTabChanged = useCallback((_event, tab) => {
     setTab(tab);
@@ -270,76 +256,149 @@ function TestScenarioMainPanel({
     });
   }, []);
 
-  const openDockPanel = useCallback((selected: TestScenarioEditorDock.DATA_OBJECT) => {
+  const openDockPanel = useCallback((selected: TestScenarioEditorDock) => {
     setDockPanel({ isOpen: true, selected: selected });
   }, []);
+
+  /** This is TEMPORARY */
+  const dataObjectsFromScesim = useMemo(() => {
+    /* To create the Data Object arrays we need an external source, in details: */
+    /* DMN Data: Retrieving DMN type from linked DMN file */
+    /* Java classes: Retrieving Java classes info from the user projects */
+    /* At this time, none of the above are supported */
+    /* Therefore, it tries to retrieve these info from the SCESIM file, if are present */
+
+    /* Retriving Data Object from the scesim file.       
+       That makes sense for previously created scesim files */
+
+    const factsMappings: SceSim__FactMappingType[] =
+      scesimModel!.ScenarioSimulationModel["simulation"]!["scesimModelDescriptor"]!["factMappings"]!["FactMapping"] ??
+      [];
+
+    const dataObjects: TestScenarioDataObject[] = [];
+
+    /* The first two FactMapping are related to the "Number" and "Description" columns. 
+       If those columns only are present, no Data Objects can be detected in the scesim file */
+    for (let i = 2; i < factsMappings.length; i++) {
+      const dataObject = dataObjects.find((value) => value.id === factsMappings[i]["factAlias"]);
+      if (dataObject) {
+        if (!dataObject.children?.some((value) => value.id === factsMappings[i]["expressionAlias"])) {
+          dataObject.children!.push({
+            id: factsMappings[i]["expressionAlias"]!,
+            name: factsMappings[i]["expressionAlias"]!,
+            customBadgeContent: factsMappings[i]["className"],
+          });
+        }
+      } else {
+        dataObjects.push({
+          id: factsMappings[i]["factAlias"],
+          name: factsMappings[i]["factAlias"],
+          customBadgeContent: factsMappings[i]["factIdentifier"]!["className"],
+          children: [
+            {
+              id: factsMappings[i]["expressionAlias"]!,
+              name: factsMappings[i]["expressionAlias"]!,
+              customBadgeContent: factsMappings[i]["className"],
+            },
+          ],
+        });
+      }
+    }
+
+    return dataObjects;
+  }, [scesimModel]);
+
+  /** It determines the Alert State */
+  useEffect(() => {
+    const assetType = scesimModel.ScenarioSimulationModel["settings"]!["type"]!;
+
+    let alertEnabled = false;
+    let alertMessage = "";
+    let alertVariant: "default" | "danger" | "warning" | "info" | "success" = "danger";
+
+    if (dataObjectsFromScesim.length > 0) {
+      alertMessage =
+        assetType === TestScenarioType[TestScenarioType.DMN]
+          ? i18n.alerts.dmnDataRetrievedFromScesim
+          : i18n.alerts.ruleDataRetrievedFromScesim;
+      alertEnabled = true;
+    } else {
+      alertMessage =
+        assetType === TestScenarioType[TestScenarioType.DMN]
+          ? i18n.alerts.dmnDataNotAvailable
+          : i18n.alerts.ruleDataNotAvailable;
+      alertVariant = assetType === TestScenarioType[TestScenarioType.DMN] ? "warning" : "danger";
+      alertEnabled = true;
+    }
+
+    setAlert({ enabled: alertEnabled, message: alertMessage, variant: alertVariant });
+  }, [dataObjectsFromScesim, i18n, scesimModel.ScenarioSimulationModel]);
 
   return (
     <>
       <div className="kie-scesim-editor--content">
-        <Tabs
-          isFilled={true}
-          activeKey={tab}
-          onSelect={onTabChanged}
-          role="region"
-          className={"kie-scesim-editor--tabs"}
-        >
-          <Tab
-            eventKey={TestScenarioEditorTab.EDITOR}
-            title={
-              <>
-                <TabTitleIcon>
-                  <TableIcon />
-                </TabTitleIcon>
-                <TabTitleText>Test Scenarios</TabTitleText>
-              </>
+        <Drawer isExpanded={dockPanel.isOpen} isInline={true} position={"right"}>
+          <DrawerContent
+            panelContent={
+              <TestScenarioDrawerPanel
+                dataObjects={dataObjectsFromScesim}
+                fileName={fileName}
+                onDrawerClose={closeDockPanel}
+                onUpdateSettingField={updateSettingField}
+                selectedDock={dockPanel.selected}
+                testScenarioSettings={{
+                  assetType: scesimModel.ScenarioSimulationModel["settings"]!["type"]!,
+                  dmnName: scesimModel.ScenarioSimulationModel["settings"]!["dmnName"],
+                  dmnNamespace: scesimModel.ScenarioSimulationModel["settings"]!["dmnNamespace"],
+                  isStatelessSessionRule: scesimModel.ScenarioSimulationModel["settings"]!["stateless"] ?? false,
+                  isTestSkipped: scesimModel.ScenarioSimulationModel["settings"]!["skipFromBuild"] ?? false,
+                  kieSessionRule: scesimModel.ScenarioSimulationModel["settings"]!["dmoSession"],
+                  ruleFlowGroup: scesimModel.ScenarioSimulationModel["settings"]!["ruleFlowGroup"],
+                }}
+              />
             }
           >
-            {tab === TestScenarioEditorTab.EDITOR && (
-              <Drawer isExpanded={dockPanel.isOpen} isInline={true} position={"right"}>
-                <DrawerContent
-                  panelContent={
-                    <TestScenarioDrawerPanel
-                      fileName={fileName}
-                      onDrawerClose={closeDockPanel}
-                      onUpdateSettingField={updateSettingField}
-                      selectedDock={dockPanel.selected}
-                      testScenarioSettings={{
-                        assetType: scesimModel.ScenarioSimulationModel["settings"]!["type"]!,
-                        dmnName: scesimModel.ScenarioSimulationModel["settings"]!["dmnName"],
-                        dmnNamespace: scesimModel.ScenarioSimulationModel["settings"]!["dmnNamespace"],
-                        isStatelessSessionRule: scesimModel.ScenarioSimulationModel["settings"]!["stateless"] ?? false,
-                        isTestSkipped: scesimModel.ScenarioSimulationModel["settings"]!["skipFromBuild"] ?? false,
-                        kieSessionRule: scesimModel.ScenarioSimulationModel["settings"]!["dmoSession"],
-                        ruleFlowGroup: scesimModel.ScenarioSimulationModel["settings"]!["ruleFlowGroup"],
-                      }}
-                    />
-                  }
-                >
-                  <DrawerContentBody>
-                    <div className={"kie-scesim-editor--grid-container"}>Scenario Grid</div>
-                  </DrawerContentBody>
-                </DrawerContent>
-              </Drawer>
-            )}
-          </Tab>
-          <Tab
-            eventKey={TestScenarioEditorTab.BACKGROUND}
-            isDisabled
-            title={
-              <>
-                <TabTitleIcon>
-                  <TableIcon />
-                </TabTitleIcon>
-                <TabTitleText>Background</TabTitleText>
-              </>
-            }
-          >
-            Backgroud
-          </Tab>
-        </Tabs>
+            <DrawerContentBody>
+              {alert.enabled && (
+                <div className="kie-scesim-editor--content-alert">
+                  <Alert variant={alert.variant} title={alert.message} />
+                </div>
+              )}
+              <div className="kie-scesim-editor--content-tabs">
+                <Tabs isFilled={true} activeKey={tab} onSelect={onTabChanged} role="region">
+                  <Tab
+                    eventKey={TestScenarioEditorTab.EDITOR}
+                    title={
+                      <>
+                        <TabTitleIcon>
+                          <TableIcon />
+                        </TabTitleIcon>
+                        <TabTitleText>{i18n.tab.scenarioTabTitle}</TabTitleText>
+                      </>
+                    }
+                  >
+                    <Bullseye>{i18n.tab.scenarioTabTitle}</Bullseye>
+                  </Tab>
+                  <Tab
+                    eventKey={TestScenarioEditorTab.BACKGROUND}
+                    title={
+                      <>
+                        <TabTitleIcon>
+                          <TableIcon />
+                        </TabTitleIcon>
+                        <TabTitleText>{i18n.tab.backgroundTabTitle}</TabTitleText>
+                      </>
+                    }
+                  >
+                    <Bullseye>{i18n.tab.backgroundTabTitle}</Bullseye>
+                  </Tab>
+                </Tabs>
+              </div>
+            </DrawerContentBody>
+          </DrawerContent>
+        </Drawer>
       </div>
-      <TestScenarioDocksPanel onDockButtonClicked={openDockPanel} />
+      <TestScenarioSideBarMenu selectedSideBarMenuItem={dockPanel} onSideBarButtonClicked={openDockPanel} />
     </>
   );
 }

@@ -21,13 +21,57 @@ import { ReferenceDictionary } from "@kie-tools-core/i18n/dist/core";
 import { CommonI18n } from "@kie-tools/i18n-common-dictionary";
 
 interface TestScenarioEditorDictionary extends ReferenceDictionary {
+  alerts: {
+    dmnDataNotAvailable: string;
+    ruleDataNotAvailable: string;
+    dmnDataRetrievedFromScesim: string;
+    ruleDataRetrievedFromScesim: string;
+  };
   drawer: {
-    dataObject: {
-      description: string;
+    cheatSheet: {
+      expression1DMN: string;
+      expression1Rule: string;
+      expression2DMN: string;
+      expression2Rule: string;
+      expression3DMN: string;
+      expression3Rule: string;
+      expression4DMN: string;
+      expression4Rule: string;
+      expression5DMN: string;
+      expression5Rule: string;
+      expression6DMN: string;
+      expression6Rule: string;
+      expression7DMN: string;
+      expression7Rule: string;
+      expression8DMN: string;
+      expression8Rule: string;
+      expression9DMN: string;
+      expression9Rule: string;
+      expression10DMN: string;
+      paragraph1: string;
+      paragraph2: (testScenarioTab: string) => string;
+      paragraph3: (backgroundTab: string, testScenarioTab: string) => string;
+      paragraph4: string;
+      paragraph5DMN: string;
+      paragraph6DMN: string;
+      paragraph6Rule: string;
       title: string;
     };
-    cheatSheet: {
-      title: string;
+    dataObjects: {
+      clearSelection: string;
+      collapseAll: string;
+      dataObjectsDescriptionDMN: string;
+      dataObjectsDescriptionRule: string;
+      descriptionDMN: string;
+      descriptionRule: string;
+      emptyDataObjectsTitleDMN: string;
+      emptyDataObjectsTitleRule: string;
+      emptyDataObjectsDescriptionDMN: string;
+      emptyDataObjectsDescriptionRule: string;
+      expandAll: string;
+      insertDataObject: string;
+      titleDMN: string;
+      titleRule: string;
     };
     settings: {
       assetType: string;
@@ -47,6 +91,15 @@ interface TestScenarioEditorDictionary extends ReferenceDictionary {
       testSkippedTooltip: string;
       title: string;
     };
+  };
+  sidebar: {
+    cheatSheetTooltip: string;
+    dataObjectsTooltip: string;
+    settingsTooltip: string;
+  };
+  tab: {
+    backgroundTabTitle: string;
+    scenarioTabTitle: string;
   };
 }
 
