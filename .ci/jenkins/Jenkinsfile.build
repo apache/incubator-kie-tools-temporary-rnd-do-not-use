@@ -42,6 +42,7 @@ pipeline {
                 node --version
                 go version
                 pnpm --version
+                lsof -i
                 """.trim()
             }
         }
@@ -52,6 +53,12 @@ pipeline {
                 sudo entrypoint.sh
                 sudo service dbus start
                 """.trim()
+            }
+        }
+
+        stage('Cleanup workspace before build') {
+            steps {
+                cleanWs()
             }
         }
 
@@ -143,7 +150,7 @@ pipeline {
             archiveArtifacts artifacts: 'artifacts/build-artifacts.zip, artifacts/tests-reports.zip, artifacts/end-to-end-tests-reports.zip, artifacts/end-to-end-tests-artifacts.zip', fingerprint: true
 
             // Clean workspace
-            cleanWs(deleteDirs: true)
+            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }
 }
