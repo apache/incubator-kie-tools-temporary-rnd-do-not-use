@@ -58,7 +58,7 @@ pipeline {
 
         stage('Cleanup workspace before build') {
             steps {
-                cleanWs()
+                cleanWs(deleteDirs: true, disableDeferredWipeout: true)
             }
         }
 
