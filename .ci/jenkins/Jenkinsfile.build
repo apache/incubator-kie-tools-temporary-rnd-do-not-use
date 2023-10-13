@@ -42,7 +42,6 @@ pipeline {
                 node --version
                 go version
                 pnpm --version
-                lsof -i
                 """.trim()
             }
         }
