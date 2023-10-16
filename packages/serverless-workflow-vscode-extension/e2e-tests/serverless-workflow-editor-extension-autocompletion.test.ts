@@ -45,7 +45,7 @@ describe("Serverless workflow editor - autocompletion tests", () => {
   });
 
   afterEach(async function () {
-    this.timeout(30000);
+    this.timeout(60000);
     await testHelper.takeScreenshotOnTestFailure(this, DIST_E2E_TESTS_FOLDER);
     await testHelper.closeAllEditors();
     await testHelper.closeAllNotifications();
