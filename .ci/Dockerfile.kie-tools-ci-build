@@ -23,6 +23,7 @@ libxi6 \
 libnss3 \
 libgconf-2-4 \
 libpci-dev \
+lsof \
 openjdk-11-jdk \
 git \
 jq \
