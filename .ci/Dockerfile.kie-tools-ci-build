@@ -95,13 +95,19 @@ RUN wget https://archive.apache.org/dist/maven/maven-3/3.8.6/binaries/apache-mav
     echo "source /etc/profile.d/maven.sh" >> $HOME/.bashrc
 
 # Golang setup
-RUN wget "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -P /tmp && \
+RUN wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz -P /tmp && \
     sudo tar -C /usr/local -xzf /tmp/go*.tar.gz && \
     sudo chown -R nonrootuser:nonrootuser /usr/local/go && \
     sudo chmod -R 755 /usr/local/go && \
     echo 'export GOPATH=${HOME}/go' | sudo tee /etc/profile.d/go.sh && \
     echo 'export PATH=${PATH}:/usr/local/go/bin:${GOPATH}/bin' | sudo tee -a /etc/profile.d/go.sh && \
     echo "source /etc/profile.d/go.sh" >> $HOME/.bashrc
+
+# CodeQL setup
+RUN wget https://github.com/github/codeql-cli-binaries/releases/download/v2.15.0/codeql-linux64.zip -P /tmp && \
+    sudo unzip /tmp/codeql-linux64.zip -d /opt && \
+    echo 'export PATH=/opt/codeql:${PATH}' | sudo tee -a /etc/profile.d/codeql.sh && \
+    echo "source /etc/profile.d/codeql.sh" >> $HOME/.bashrc
 
 # Aliases
 RUN echo alias podman="docker" >> $HOME/.bashrc
