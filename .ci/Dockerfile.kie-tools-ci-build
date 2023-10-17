@@ -88,7 +88,6 @@ RUN bash -c 'source $HOME/.nvm/nvm.sh && \
 RUN wget https://archive.apache.org/dist/maven/maven-3/3.8.6/binaries/apache-maven-3.8.6-bin.tar.gz -P /tmp && \
     sudo tar xzf /tmp/apache-maven-3.8.6-bin.tar.gz -C /opt && \
     sudo ln -s /opt/apache-maven-3.8.6 /opt/maven && \
-    echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' | sudo tee /etc/profile.d/maven.sh && \
     echo 'export M2_HOME=/opt/maven' | sudo tee -a /etc/profile.d/maven.sh && \
     echo 'export MAVEN_HOME=${M2_HOME}' | sudo tee -a /etc/profile.d/maven.sh && \
     echo 'export PATH=${M2_HOME}/bin:${PATH}' | sudo tee -a /etc/profile.d/maven.sh && \
@@ -96,16 +95,15 @@ RUN wget https://archive.apache.org/dist/maven/maven-3/3.8.6/binaries/apache-mav
 
 # Golang setup
 RUN wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz -P /tmp && \
-    sudo tar -C /usr/local -xzf /tmp/go*.tar.gz && \
-    sudo chown -R nonrootuser:nonrootuser /usr/local/go && \
-    sudo chmod -R 755 /usr/local/go && \
+    sudo tar xzf /tmp/go*.tar.gz -C /opt && \
     echo 'export GOPATH=${HOME}/go' | sudo tee /etc/profile.d/go.sh && \
-    echo 'export PATH=${PATH}:/usr/local/go/bin:${GOPATH}/bin' | sudo tee -a /etc/profile.d/go.sh && \
+    echo 'export PATH=${PATH}:/opt/go/bin:${GOPATH}/bin' | sudo tee -a /etc/profile.d/go.sh && \
     echo "source /etc/profile.d/go.sh" >> $HOME/.bashrc
 
 # CodeQL setup
 RUN wget https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.15.0/codeql-bundle-linux64.tar.gz -P /tmp && \
     sudo tar xzf /tmp/codeql-bundle-linux64.tar.gz -C /opt && \
+    sudo chown -R nonrootuser:nonrootuser /opt/codeql && \
     echo 'export PATH=/opt/codeql:${PATH}' | sudo tee -a /etc/profile.d/codeql.sh && \
     echo "source /etc/profile.d/codeql.sh" >> $HOME/.bashrc
 
@@ -114,7 +112,7 @@ RUN echo alias podman="docker" >> $HOME/.bashrc
 RUN echo alias podman="docker" >> $HOME/.profile
 
 # Env vars
-ENV JAVA_HOME="/usr/lib/jvm/default-java"
+ENV JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
 ENV DISPLAY=":99"
 ENV NODE_OPTIONS="--max_old_space_size=4096"
 
