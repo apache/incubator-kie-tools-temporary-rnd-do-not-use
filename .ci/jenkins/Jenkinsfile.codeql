@@ -1,0 +1,104 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+pipeline {
+    agent {
+        docker {
+            image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
+        }
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    stages {
+
+        stage("Pre-check") {
+            steps {
+                sh """#!/bin/bash -el
+                codeql version --format=json
+                """.trim()
+            }
+        }
+
+        stage("CodeQL") {
+            parallel {
+                stage('CodeQL GO') {
+                    steps {
+                        sh """#!/bin/bash -el
+                        # Create dir to store results
+                        mkdir /tmp/codeqlresultsgo
+
+                        # Create a database of KIE tools go code
+                        codeql database create /tmp/codeqldbgo --language=go
+
+                        # Code Scanning suite: Queries run by default in CodeQL code scanning on GitHub.
+                        codeql database analyze /tmp/codeqldbgo go-code-scanning.qls --format=sarif-latest --output=/tmp/codeqlresultsgo/go-code-scanning.sarif
+
+                        # Security extended suite: Queries of lower severity and precision than the default queries
+                        codeql database analyze /tmp/codeqldbgo go-security-extended.qls --format=sarif-latest --output=/tmp/codeqlresultsgo/go-security-extended.sarif
+
+                        # Security and quality suite: Queries of lower severity and precision than the default queries
+                        codeql database analyze /tmp/codeqldbgo go-security-and-quality.qls --format=sarif-latest --output=/tmp/codeqlresultsgo/go-security-and-quality.sarif
+                        """.trim()
+                    }
+                }
+
+                stage('CodeQL Javascript') {
+                    steps {
+                        sh """#!/bin/bash -el
+                        # Create dir to store results
+                        mkdir /tmp/codeqlresultsjs
+
+                        # Create a database of KIE tools js code
+                        codeql database create /tmp/codeqldbjs --language=javascript
+
+                        # Code Scanning suite: Queries run by default in CodeQL code scanning on GitHub.
+                        codeql database analyze /tmp/codeqldbjs javascript-code-scanning.qls --format=sarifv2.1.0 --output=/tmp/codeqlresultsjs/javascript-code-scanning.sarif
+
+                        # Security extended suite: Queries of lower severity and precision than the default queries
+                        codeql database analyze /tmp/codeqldbjs javascript-security-extended.qls --format=sarif-latest --output=/tmp/codeqlresultsjs/javascript-security-extended.sarif
+
+                        # Security and quality suite: Queries of lower severity and precision than the default queries
+                        codeql database analyze /tmp/codeqldbjs javascript-security-and-quality.qls --format=sarif-latest --output=/tmp/codeqlresultsjs/javascript-security-and-quality.sarif
+                        """.trim()
+                    }
+                }
+            }
+        }
+
+        stage('Zip results') {
+            steps {
+                sh """#!/bin/bash -el
+                rm -rf artifacts && mkdir artifacts
+                zip -r artifacts/code-analysis-results-go.zip /tmp/codeqlresultsgo
+                zip -r artifacts/code-analysis-results-js.zip /tmp/codeqlresultsjs
+                """.trim()
+            }
+        }
+    }
+
+    post {
+        always {
+            // Artifacts
+            archiveArtifacts artifacts: 'artifacts/code-analysis-results-go.zip, artifacts/code-analysis-results-js.zip', fingerprint: true
+
+            // Clean workspace
+            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+        }
+    }
+}
