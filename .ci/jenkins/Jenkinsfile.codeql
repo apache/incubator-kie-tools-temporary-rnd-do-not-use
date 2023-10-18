@@ -95,7 +95,7 @@ pipeline {
     post {
         always {
             // Artifacts
-            archiveArtifacts artifacts: 'artifacts/code-analysis-results-go.zip, artifacts/code-analysis-results-js.zip', fingerprint: true
+            //archiveArtifacts artifacts: 'artifacts/code-analysis-results-go.zip, artifacts/code-analysis-results-js.zip', fingerprint: true
 
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
