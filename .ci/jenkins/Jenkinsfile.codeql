@@ -91,6 +91,16 @@ pipeline {
             }
         }
 
+        stage('Zip results') {
+            steps {
+                sh """#!/bin/bash -el
+                mkdir ${ARTIFACTS_DIR}
+                zip -r ${ARTIFACTS_DIR}/code-analysis-results-go.zip ${GO_RESULTS_DIR}
+                zip -r ${ARTIFACTS_DIR}/code-analysis-results-js.zip ${JS_RESULTS_DIR}
+                """.trim()
+            }
+        }
+
         stage('Upload results') {
             steps {
                 withCredentials([string(credentialsId: 'kie-ci3-token', variable: 'GITHUB_TOKEN')]) {
@@ -111,16 +121,6 @@ pipeline {
                         """.trim()
                     }
                 }
-            }
-        }
-
-        stage('Zip results') {
-            steps {
-                sh """#!/bin/bash -el
-                mkdir ${ARTIFACTS_DIR}
-                zip -r ${ARTIFACTS_DIR}/code-analysis-results-go.zip ${GO_RESULTS_DIR}
-                zip -r ${ARTIFACTS_DIR}/code-analysis-results-js.zip ${JS_RESULTS_DIR}
-                """.trim()
             }
         }
     }
