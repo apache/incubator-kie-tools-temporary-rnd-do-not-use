@@ -25,12 +25,21 @@ pipeline {
         timeout(time: 30, unit: 'MINUTES')
     }
 
+    environment {
+        RESULTS_DIR = "/tmp/codeql/results"
+        DATABASE_DIR = "/tmp/codeql/db"
+        ARTIFACTS_DIR = "/tmp/artifacts"
+        GO_RESULTS_DIR = "${RESULTS_DIR}/go"
+        GO_DATABASE_DIR = "${DATABASE_DIR}/go"
+        JS_RESULTS_DIR = "${RESULTS_DIR}/js"
+        JS_DATABASE_DIR = "${DATABASE_DIR}/js"
+    }
+
     stages {
 
         stage("Pre-check") {
             steps {
                 sh """#!/bin/bash -el
-                env
                 codeql version --format=json
                 """.trim()
             }
@@ -42,19 +51,19 @@ pipeline {
                     steps {
                         sh """#!/bin/bash -el
                         # Create dir to store results
-                        mkdir /tmp/codeqlresultsgo
+                        mkdir -p ${GO_RESULTS_DIR}
 
                         # Create a database of KIE tools go code
-                        codeql database create /tmp/codeqldbgo --language=go
+                        codeql database create ${GO_DATABASE_DIR} --language=go
 
                         # Code Scanning suite: Queries run by default in CodeQL code scanning on GitHub.
-                        codeql database analyze /tmp/codeqldbgo go-code-scanning.qls --format=sarif-latest --output=/tmp/codeqlresultsgo/go-code-scanning.sarif
+                        codeql database analyze ${GO_DATABASE_DIR} go-code-scanning.qls --format=sarif-latest --output=${GO_RESULTS_DIR}/go-code-scanning.sarif
 
                         # Security extended suite: Queries of lower severity and precision than the default queries
-                        codeql database analyze /tmp/codeqldbgo go-security-extended.qls --format=sarif-latest --output=/tmp/codeqlresultsgo/go-security-extended.sarif
+                        codeql database analyze ${GO_DATABASE_DIR} go-security-extended.qls --format=sarif-latest --output=${GO_RESULTS_DIR}/go-security-extended.sarif
 
                         # Security and quality suite: Queries of lower severity and precision than the default queries
-                        codeql database analyze /tmp/codeqldbgo go-security-and-quality.qls --format=sarif-latest --output=/tmp/codeqlresultsgo/go-security-and-quality.sarif
+                        codeql database analyze ${GO_DATABASE_DIR} go-security-and-quality.qls --format=sarif-latest --output=${GO_RESULTS_DIR}/go-security-and-quality.sarif
                         """.trim()
                     }
                 }
@@ -63,20 +72,42 @@ pipeline {
                     steps {
                         sh """#!/bin/bash -el
                         # Create dir to store results
-                        mkdir /tmp/codeqlresultsjs
+                        mkdir -p ${JS_RESULTS_DIR}
 
                         # Create a database of KIE tools js code
-                        codeql database create /tmp/codeqldbjs --language=javascript
+                        codeql database create ${JS_DATABASE_DIR} --language=javascript
 
                         # Code Scanning suite: Queries run by default in CodeQL code scanning on GitHub.
-                        codeql database analyze /tmp/codeqldbjs javascript-code-scanning.qls --format=sarifv2.1.0 --output=/tmp/codeqlresultsjs/javascript-code-scanning.sarif
+                        codeql database analyze ${JS_DATABASE_DIR} javascript-code-scanning.qls --format=sarif-latest --output=${JS_RESULTS_DIR}/javascript-code-scanning.sarif
 
                         # Security extended suite: Queries of lower severity and precision than the default queries
-                        codeql database analyze /tmp/codeqldbjs javascript-security-extended.qls --format=sarif-latest --output=/tmp/codeqlresultsjs/javascript-security-extended.sarif
+                        codeql database analyze ${JS_DATABASE_DIR} javascript-security-extended.qls --format=sarif-latest --output=${JS_RESULTS_DIR}/javascript-security-extended.sarif
 
                         # Security and quality suite: Queries of lower severity and precision than the default queries
-                        codeql database analyze /tmp/codeqldbjs javascript-security-and-quality.qls --format=sarif-latest --output=/tmp/codeqlresultsjs/javascript-security-and-quality.sarif
+                        codeql database analyze ${JS_DATABASE_DIR} javascript-security-and-quality.qls --format=sarif-latest --output=${JS_RESULTS_DIR}/javascript-security-and-quality.sarif
+                        """.trim()
+                    }
+                }
+            }
+        }
 
+        stage('Upload results') {
+            steps {
+                withCredentials([string(credentialsId: '399061d0-5ab5-4142-a186-a52081fef742', variable: 'GITHUB_TOKEN')]) {
+                    script {
+                        def prNumber = getPRNumber()
+                        def repoSlug = getRepoSlug()
+
+                        sh """#!/bin/bash -el
+                        # GO results
+                        codeql github upload-results --sarif=${GO_RESULTS_DIR}/go-code-scanning.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${GO_RESULTS_DIR}/go-security-extended.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${GO_RESULTS_DIR}/go-security-and-quality.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
+
+                        # Javascript results
+                        codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-code-scanning.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-security-extended.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-security-and-quality.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
                         """.trim()
                     }
                 }
@@ -86,9 +117,9 @@ pipeline {
         stage('Zip results') {
             steps {
                 sh """#!/bin/bash -el
-                rm -rf artifacts && mkdir artifacts
-                zip -r artifacts/code-analysis-results-go.zip /tmp/codeqlresultsgo
-                zip -r artifacts/code-analysis-results-js.zip /tmp/codeqlresultsjs
+                mkdir ${ARTIFACTS_DIR}
+                zip -r ${ARTIFACTS_DIR}/code-analysis-results-go.zip ${GO_RESULTS_DIR}
+                zip -r ${ARTIFACTS_DIR}/code-analysis-results-js.zip ${JS_RESULTS_DIR}
                 """.trim()
             }
         }
@@ -97,10 +128,23 @@ pipeline {
     post {
         always {
             // Artifacts
-            archiveArtifacts artifacts: 'artifacts/code-analysis-results-go.zip, artifacts/code-analysis-results-js.zip', fingerprint: true, allowEmptyArchive: true
+            archiveArtifacts artifacts: "${ARTIFACTS_DIR}/code-analysis-results-go.zip, ${ARTIFACTS_DIR}/code-analysis-results-js.zip", fingerprint: true, allowEmptyArchive: true
 
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }
+}
+
+def getPRNumber() {
+    branchName = "${env.BRANCH_NAME}"
+    return branchName.replace("PR-", "")
+}
+
+def getRepoSlug() {
+    changeURL = "${env.CHANGE_URL}"
+    tokens = changeURL.tokenize('/')
+    org = tokens[tokens.size()-4]
+    repo = tokens[tokens.size()-3]
+    return "${org}/${repo}"
 }
