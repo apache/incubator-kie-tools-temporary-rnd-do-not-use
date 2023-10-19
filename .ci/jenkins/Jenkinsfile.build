@@ -32,13 +32,13 @@ pipeline {
         END_TO_END_TESTS_REPORTS_PATTERNS = "packages/**/dist-e2e-tests/junit-report*.xml examples/**/dist-e2e-tests/junit-report*.xml packages/**/target/failsafe-reports/TEST-*.xml examples/**/target/failsafe-reports/TEST-*.xml"
         END_TO_END_TESTS_ARTIFACTS_PATTERNS = "packages/**/dist-e2e-tests examples/**/dist-e2e-tests"
         BUILD_ARTIFACTS_PATTERNS = "packages/**/dist examples/**/dist"
+        REPO_URL = "https://github.com/apache/incubator-kie-tools-temporary-rnd-do-not-use.git"
     }
 
     stages {
         stage('Pre-check') {
             steps {
                 sh """#!/bin/bash -el
-                env
                 java --version
                 mvn --version
                 node --version
@@ -70,7 +70,7 @@ pipeline {
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [[$class: 'CleanCheckout']],
                     submoduleCfg: [],
-                    userRemoteConfigs: [[credentialsId: 'kie-ci', url: "${env.GIT_URL}"]]
+                    userRemoteConfigs: [[credentialsId: 'kie-ci', url: "${env.REPO_URL}"]]
                 ])
             }
         }
