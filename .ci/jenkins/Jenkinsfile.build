@@ -23,6 +23,7 @@ pipeline {
     }
 
     options {
+        skipDefaultCheckout()
         timeout(time: 300, unit: 'MINUTES')
     }
 
@@ -55,10 +56,51 @@ pipeline {
             }
         }
 
-        stage('Cleanup workspace before build') {
+        stage('Clean workspace before build') {
             steps {
                 cleanWs(deleteDirs: true, disableDeferredWipeout: true)
-                checkout scm
+            }
+        }
+
+        stage('Checkout kie-tools') {
+            steps {
+                checkout([$class: 'GitSCM',
+                    branches: [[name: '${env.CHANGE_TARGET}']],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [[$class: 'CleanCheckout']],
+                    submoduleCfg: [],
+                    userRemoteConfigs: [[credentialsId: 'kie-ci', url: "${env.GIT_URL}"]]
+                ])
+            }
+        }
+
+        stage('Setup global GIT user') {
+            steps {
+                sh """#!/bin/bash -el
+                git config --global user.email "kietoolsbot@gmail.com"
+                git config --global user.name "KIE Tools Bot (kiegroup)"
+                """.trim()
+            }
+        }
+
+        stage('Merge PR Changes squashed') {
+            steps {
+                sh """#!/bin/bash -el
+                echo "Merge changes from ${env.CHANGE_AUTHOR}/${env.CHANGE_BRANCH}"
+                git remote add ${env.CHANGE_AUTHOR} https://github.com/${env.CHANGE_AUTHOR}/kie-tools.git
+                git fetch ${env.CHANGE_AUTHOR} ${env.CHANGE_BRANCH}
+
+                echo "Before merging..."
+                git log -n 1
+                echo "base_sha=$(git rev-parse HEAD)"
+
+                git merge --squash ${env.CHANGE_AUTHOR}/${env.CHANGE_BRANCH}
+                git commit --no-edit
+
+                echo "After merging..."
+                git log -n 1
+                echo "head_sha=$(git rev-parse HEAD)"
+                "".trim()
             }
         }
 
@@ -113,12 +155,12 @@ pipeline {
         stage('Zip artifacts') {
             steps {
                 sh """#!/bin/bash -el
-                rm -rf artifacts && mkdir artifacts
+                mkdir /tmp/artifacts
                 output_empty_zip () { echo UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA== | base64 -d; }
-                zip -r artifacts/build-artifacts.zip $BUILD_ARTIFACTS_PATTERNS || output_empty_zip > artifacts/build-artifacts.zip
-                zip -r artifacts/tests-reports.zip $TESTS_REPORTS_PATTERNS || output_empty_zip > artifacts/tests-reports.zip
-                zip -r artifacts/end-to-end-tests-reports.zip $END_TO_END_TESTS_REPORTS_PATTERNS || output_empty_zip > artifacts/end-to-end-tests-reports.zip
-                zip -r artifacts/end-to-end-tests-artifacts.zip $END_TO_END_TESTS_ARTIFACTS_PATTERNS || output_empty_zip > artifacts/end-to-end-tests-artifacts.zip
+                zip -r /tmp/artifacts/build-artifacts.zip $BUILD_ARTIFACTS_PATTERNS || output_empty_zip > /tmp/artifacts/build-artifacts.zip
+                zip -r /tmp/artifacts/tests-reports.zip $TESTS_REPORTS_PATTERNS || output_empty_zip > /tmp/artifacts/tests-reports.zip
+                zip -r /tmp/artifacts/end-to-end-tests-reports.zip $END_TO_END_TESTS_REPORTS_PATTERNS || output_empty_zip > /tmp/artifacts/end-to-end-tests-reports.zip
+                zip -r /tmp/artifacts/end-to-end-tests-artifacts.zip $END_TO_END_TESTS_ARTIFACTS_PATTERNS || output_empty_zip > /tmp/artifacts/end-to-end-tests-artifacts.zip
                 """.trim()
             }
         }
@@ -126,8 +168,8 @@ pipeline {
         stage('Prepare test reports for junit') {
             steps {
                 sh """#!/bin/bash -el
-                unzip artifacts/tests-reports.zip -d artifacts/test-reports
-                unzip artifacts/end-to-end-tests-reports.zip -d artifacts/end-to-end-tests-reports
+                unzip /tmp/artifacts/tests-reports.zip -d /tmp/artifacts/test-reports
+                unzip /tmp/artifacts/end-to-end-tests-reports.zip -d /tmp/artifacts/end-to-end-tests-reports
                 """.trim()
             }
         }
@@ -137,16 +179,16 @@ pipeline {
         always {
             // Tests reports
             withChecks('Tests') {
-                junit allowEmptyResults: true, testResults: 'artifacts/test-reports/**/junit-report*.xml'
+                junit allowEmptyResults: true, testResults: '/tmp/artifacts/test-reports/**/junit-report*.xml'
             }
 
             // E2E Tests reports
             withChecks('E2E Tests') {
-                junit allowEmptyResults: true, testResults: 'artifacts/end-to-end-tests-reports/**/junit-report*.xml'
+                junit allowEmptyResults: true, testResults: '/tmp/artifacts/end-to-end-tests-reports/**/junit-report*.xml'
             }
 
             // Artifacts
-            archiveArtifacts artifacts: 'artifacts/build-artifacts.zip, artifacts/tests-reports.zip, artifacts/end-to-end-tests-reports.zip, artifacts/end-to-end-tests-artifacts.zip', fingerprint: true
+            archiveArtifacts artifacts: '/tmp/artifacts/build-artifacts.zip, /tmp/artifacts/tests-reports.zip, /tmp/artifacts/end-to-end-tests-reports.zip, /tmp/artifacts/end-to-end-tests-artifacts.zip', fingerprint: true
 
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
