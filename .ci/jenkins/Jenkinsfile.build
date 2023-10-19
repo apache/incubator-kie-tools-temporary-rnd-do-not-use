@@ -90,7 +90,7 @@ pipeline {
                 git fetch ${env.CHANGE_AUTHOR} ${env.CHANGE_BRANCH}
                 git merge --squash ${env.CHANGE_AUTHOR}/${env.CHANGE_BRANCH}
                 git commit --no-edit
-                "".trim()
+                """.trim()
             }
         }
 
