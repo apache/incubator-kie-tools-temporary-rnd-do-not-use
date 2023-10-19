@@ -38,6 +38,7 @@ pipeline {
         stage('Pre-check') {
             steps {
                 sh """#!/bin/bash -el
+                env
                 java --version
                 mvn --version
                 node --version
