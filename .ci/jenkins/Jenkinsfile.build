@@ -95,7 +95,6 @@ pipeline {
         stage('Build FULL') {
             steps {
                 sh """#!/bin/bash -el
-                lsof -i
                 export WEBPACK__minimize=false
                 export WEBPACK__tsLoaderTranspileOnl=false
                 export KIE_TOOLS_BUILD__runLinters=true
