@@ -93,7 +93,7 @@ pipeline {
 
         stage('Upload results') {
             steps {
-                withCredentials([string(credentialsId: '399061d0-5ab5-4142-a186-a52081fef742', variable: 'GITHUB_TOKEN')]) {
+                withCredentials([string(credentialsId: 'kie-ci3-token', variable: 'GITHUB_TOKEN')]) {
                     script {
                         def prNumber = getPRNumber()
                         def repoSlug = getRepoSlug()
