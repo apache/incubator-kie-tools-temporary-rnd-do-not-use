@@ -32,7 +32,7 @@ pipeline {
         END_TO_END_TESTS_REPORTS_PATTERNS = "packages/**/dist-e2e-tests/junit-report*.xml examples/**/dist-e2e-tests/junit-report*.xml packages/**/target/failsafe-reports/TEST-*.xml examples/**/target/failsafe-reports/TEST-*.xml"
         END_TO_END_TESTS_ARTIFACTS_PATTERNS = "packages/**/dist-e2e-tests examples/**/dist-e2e-tests"
         BUILD_ARTIFACTS_PATTERNS = "packages/**/dist examples/**/dist"
-        REPO_URL = "https://github.com/apache/incubator-kie-tools-temporary-rnd-do-not-use.git"
+        REPO_NAME = "incubator-kie-tools-temporary-rnd-do-not-use"
     }
 
     stages {
@@ -70,17 +70,24 @@ pipeline {
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [[$class: 'CleanCheckout']],
                     submoduleCfg: [],
-                    userRemoteConfigs: [[credentialsId: 'kie-ci', url: "${env.REPO_URL}"]]
+                    userRemoteConfigs: [[credentialsId: 'kie-ci', url: "http://github.com/apache/${env.REPO_NAME}.git"]]
                 ])
+            }
+        }
+
+        stage('Setup git user') {
+            steps {
+                sh """#!/bin/bash -el
+                git config --global user.email "kietoolsbot@gmail.com"
+                git config --global user.name "KIE Tools Bot (kiegroup)"
+                """.trim()
             }
         }
 
         stage('Merge PR Changes (squashed)') {
             steps {
                 sh """#!/bin/bash -el
-                git config --global user.email "kietoolsbot@gmail.com"
-                git config --global user.name "KIE Tools Bot (kiegroup)"
-                git remote add ${env.CHANGE_AUTHOR} https://github.com/${env.CHANGE_AUTHOR}/kie-tools.git
+                git remote add ${env.CHANGE_AUTHOR} https://github.com/${env.CHANGE_AUTHOR}/${env.REPO_NAME}.git
                 git fetch ${env.CHANGE_AUTHOR} ${env.CHANGE_BRANCH}
                 git merge --squash ${env.CHANGE_AUTHOR}/${env.CHANGE_BRANCH}
                 git commit --no-edit
