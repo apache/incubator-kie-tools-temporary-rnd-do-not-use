@@ -32,6 +32,7 @@ pipeline {
         END_TO_END_TESTS_REPORTS_PATTERNS = "packages/**/dist-e2e-tests/junit-report*.xml examples/**/dist-e2e-tests/junit-report*.xml packages/**/target/failsafe-reports/TEST-*.xml examples/**/target/failsafe-reports/TEST-*.xml"
         END_TO_END_TESTS_ARTIFACTS_PATTERNS = "packages/**/dist-e2e-tests examples/**/dist-e2e-tests"
         BUILD_ARTIFACTS_PATTERNS = "packages/**/dist examples/**/dist"
+        ARTIFACTS_TMP_DIR = "artifacts-tmp"
         REPO_NAME = "incubator-kie-tools-temporary-rnd-do-not-use"
     }
 
@@ -146,12 +147,12 @@ pipeline {
         stage('Zip artifacts') {
             steps {
                 sh """#!/bin/bash -el
-                mkdir /tmp/artifacts
+                mkdir ${ARTIFACTS_TMP_DIR}
                 output_empty_zip () { echo UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA== | base64 -d; }
-                zip -r /tmp/artifacts/build-artifacts.zip $BUILD_ARTIFACTS_PATTERNS || output_empty_zip > /tmp/artifacts/build-artifacts.zip
-                zip -r /tmp/artifacts/tests-reports.zip $TESTS_REPORTS_PATTERNS || output_empty_zip > /tmp/artifacts/tests-reports.zip
-                zip -r /tmp/artifacts/end-to-end-tests-reports.zip $END_TO_END_TESTS_REPORTS_PATTERNS || output_empty_zip > /tmp/artifacts/end-to-end-tests-reports.zip
-                zip -r /tmp/artifacts/end-to-end-tests-artifacts.zip $END_TO_END_TESTS_ARTIFACTS_PATTERNS || output_empty_zip > /tmp/artifacts/end-to-end-tests-artifacts.zip
+                zip -r ${ARTIFACTS_TMP_DIR}/build-artifacts.zip $BUILD_ARTIFACTS_PATTERNS || output_empty_zip > ${ARTIFACTS_TMP_DIR}/build-artifacts.zip
+                zip -r ${ARTIFACTS_TMP_DIR}/tests-reports.zip $TESTS_REPORTS_PATTERNS || output_empty_zip > ${ARTIFACTS_TMP_DIR}/tests-reports.zip
+                zip -r ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports.zip $END_TO_END_TESTS_REPORTS_PATTERNS || output_empty_zip > ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports.zip
+                zip -r ${ARTIFACTS_TMP_DIR}/end-to-end-tests-artifacts.zip $END_TO_END_TESTS_ARTIFACTS_PATTERNS || output_empty_zip > ${ARTIFACTS_TMP_DIR}/end-to-end-tests-artifacts.zip
                 """.trim()
             }
         }
@@ -159,8 +160,8 @@ pipeline {
         stage('Prepare test reports for junit') {
             steps {
                 sh """#!/bin/bash -el
-                unzip /tmp/artifacts/tests-reports.zip -d /tmp/artifacts/test-reports
-                unzip /tmp/artifacts/end-to-end-tests-reports.zip -d /tmp/artifacts/end-to-end-tests-reports
+                unzip ${ARTIFACTS_TMP_DIR}/tests-reports.zip -d ${ARTIFACTS_TMP_DIR}/test-reports
+                unzip ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports.zip -d ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports
                 """.trim()
             }
         }
@@ -170,16 +171,16 @@ pipeline {
         always {
             // Tests reports
             withChecks('Tests') {
-                junit allowEmptyResults: true, testResults: '/tmp/artifacts/test-reports/**/junit-report*.xml'
+                junit allowEmptyResults: true, testResults: "${ARTIFACTS_TMP_DIR}/test-reports/**/junit-report*.xml"
             }
 
             // E2E Tests reports
             withChecks('E2E Tests') {
-                junit allowEmptyResults: true, testResults: '/tmp/artifacts/end-to-end-tests-reports/**/junit-report*.xml'
+                junit allowEmptyResults: true, testResults: "${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports/**/junit-report*.xml"
             }
 
             // Artifacts
-            archiveArtifacts artifacts: '/tmp/artifacts/build-artifacts.zip, /tmp/artifacts/tests-reports.zip, /tmp/artifacts/end-to-end-tests-reports.zip, /tmp/artifacts/end-to-end-tests-artifacts.zip', fingerprint: true
+            archiveArtifacts artifacts: "${ARTIFACTS_TMP_DIR}/build-artifacts.zip, ${ARTIFACTS_TMP_DIR}/tests-reports.zip, ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports.zip, ${ARTIFACTS_TMP_DIR}/end-to-end-tests-artifacts.zip", fingerprint: true
 
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
