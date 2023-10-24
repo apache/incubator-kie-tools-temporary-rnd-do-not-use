@@ -40,7 +40,7 @@ RUN wget -O /tmp/firefox-latest.tar.bz2 "https://download.mozilla.org/?product=f
     ln -s /opt/firefox-latest/firefox /usr/bin/firefox
 
 # Install chromedriver
-RUN wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/118.0.5993.70/linux64/chromedriver-linux64.zip && \
+RUN wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/118.0.5993.88/linux64/chromedriver-linux64.zip && \
     unzip /tmp/chromedriver-linux64.zip -d /tmp && mv /tmp/chromedriver-linux64/chromedriver /usr/bin/
 
 RUN echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf && sysctl -p
@@ -106,6 +106,10 @@ RUN wget https://github.com/github/codeql-action/releases/download/codeql-bundle
     sudo chown -R nonrootuser:nonrootuser /opt/codeql && \
     echo 'export PATH=/opt/codeql:${PATH}' | sudo tee -a /etc/profile.d/codeql.sh && \
     echo "source /etc/profile.d/codeql.sh" >> $HOME/.bashrc
+
+# Openshift client setup
+RUN wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -P /tmp && \
+    sudo tar -C /usr/bin/ -xvzf /tmp/openshift-client-linux.tar.gz oc
 
 # Aliases
 RUN echo alias podman="docker" >> $HOME/.bashrc
