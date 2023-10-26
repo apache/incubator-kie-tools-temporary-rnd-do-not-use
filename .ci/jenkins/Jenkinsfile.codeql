@@ -105,19 +105,18 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'kie-ci3-token', variable: 'GITHUB_TOKEN')]) {
                     script {
-                        def prNumber = getPRNumber()
                         def repoSlug = getRepoSlug()
 
                         sh """#!/bin/bash -el
                         # GO results
-                        codeql github upload-results --sarif=${GO_RESULTS_DIR}/go-code-scanning.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
-                        codeql github upload-results --sarif=${GO_RESULTS_DIR}/go-security-extended.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
-                        codeql github upload-results --sarif=${GO_RESULTS_DIR}/go-security-and-quality.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${GO_RESULTS_DIR}/go-code-scanning.sarif --repository=${repoSlug} --ref=refs/pull/${env.CHANGE_ID}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${GO_RESULTS_DIR}/go-security-extended.sarif --repository=${repoSlug} --ref=refs/pull/${env.CHANGE_ID}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${GO_RESULTS_DIR}/go-security-and-quality.sarif --repository=${repoSlug} --ref=refs/pull/${env.CHANGE_ID}/head --commit=${env.GIT_COMMIT}
 
                         # Javascript results
-                        codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-code-scanning.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
-                        codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-security-extended.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
-                        codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-security-and-quality.sarif --repository=${repoSlug} --ref=refs/pull/${prNumber}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-code-scanning.sarif --repository=${repoSlug} --ref=refs/pull/${env.CHANGE_ID}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-security-extended.sarif --repository=${repoSlug} --ref=refs/pull/${env.CHANGE_ID}/head --commit=${env.GIT_COMMIT}
+                        codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-security-and-quality.sarif --repository=${repoSlug} --ref=refs/pull/${env.CHANGE_ID}/head --commit=${env.GIT_COMMIT}
                         """.trim()
                     }
                 }
@@ -134,11 +133,6 @@ pipeline {
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }
-}
-
-def getPRNumber() {
-    branchName = "${env.BRANCH_NAME}"
-    return branchName.replace("PR-", "")
 }
 
 def getRepoSlug() {
