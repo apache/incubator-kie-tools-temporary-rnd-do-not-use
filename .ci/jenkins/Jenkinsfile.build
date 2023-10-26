@@ -19,7 +19,7 @@ pipeline {
         docker {
             label 'builds22'
             image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
-            args '--shm-size=2g --entrypoint="" --privileged --group-add docker --group-add input --group-add render'
+            args '--shm-size=2g --privileged --group-add docker'
         }
     }
 
@@ -29,92 +29,20 @@ pipeline {
     }
 
     environment {
-        TESTS_REPORTS_PATTERNS = "packages/**/dist-tests/junit-report*.xml examples/**/dist-tests/junit-report*.xml packages/**/target/surefire-reports/TEST-*.xml examples/**/target/surefire-reports/TEST-*.xml"
-        END_TO_END_TESTS_REPORTS_PATTERNS = "packages/**/dist-e2e-tests/junit-report*.xml examples/**/dist-e2e-tests/junit-report*.xml packages/**/target/failsafe-reports/TEST-*.xml examples/**/target/failsafe-reports/TEST-*.xml"
-        END_TO_END_TESTS_ARTIFACTS_PATTERNS = "packages/**/dist-e2e-tests examples/**/dist-e2e-tests"
-        BUILD_ARTIFACTS_PATTERNS = "packages/**/dist examples/**/dist"
+        TESTS_REPORTS_PATTERNS = "kie-tools/packages/**/dist-tests/junit-report*.xml kie-tools/examples/**/dist-tests/junit-report*.xml kie-tools/packages/**/target/surefire-reports/TEST-*.xml kie-tools/examples/**/target/surefire-reports/TEST-*.xml"
+        END_TO_END_TESTS_REPORTS_PATTERNS = "kie-tools/packages/**/dist-e2e-tests/junit-report*.xml kie-tools/examples/**/dist-e2e-tests/junit-report*.xml kie-tools/packages/**/target/failsafe-reports/TEST-*.xml kie-tools/examples/**/target/failsafe-reports/TEST-*.xml"
+        END_TO_END_TESTS_ARTIFACTS_PATTERNS = "kie-tools/packages/**/dist-e2e-tests kie-tools/examples/**/dist-e2e-tests"
+        BUILD_ARTIFACTS_PATTERNS = "kie-tools/packages/**/dist kie-tools/examples/**/dist"
         ARTIFACTS_TMP_DIR = "artifacts-tmp"
         REPO_NAME = "incubator-kie-tools-temporary-rnd-do-not-use"
     }
 
     stages {
-        stage('Pre-check') {
-            steps {
-                sh """#!/bin/bash -el
-                java --version
-                mvn --version
-                node --version
-                go version
-                pnpm --version
-                """.trim()
-            }
-        }
-
         stage('Start Docker in Docker') {
             steps {
                 sh """#!/bin/bash -el
                 sudo entrypoint.sh
                 sudo service dbus start
-                """.trim()
-            }
-        }
-
-        stage('Clean workspace before build') {
-            steps {
-                cleanWs(deleteDirs: true, disableDeferredWipeout: true)
-            }
-        }
-
-        stage('Checkout kie-tools') {
-            steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: "${env.CHANGE_TARGET}"]],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'CleanCheckout']],
-                    submoduleCfg: [],
-                    userRemoteConfigs: [[credentialsId: 'kie-ci', url: "http://github.com/apache/${env.REPO_NAME}.git"]]
-                ])
-            }
-        }
-
-        stage('Setup git user') {
-            steps {
-                sh """#!/bin/bash -el
-                git config --global user.email "kietoolsbot@gmail.com"
-                git config --global user.name "KIE Tools Bot (kiegroup)"
-                """.trim()
-            }
-        }
-
-        stage('Merge PR Changes (squashed)') {
-            steps {
-                sh """#!/bin/bash -el
-                git remote add ${env.CHANGE_AUTHOR} https://github.com/${env.CHANGE_AUTHOR}/${env.REPO_NAME}.git
-                git fetch ${env.CHANGE_AUTHOR} ${env.CHANGE_BRANCH}
-                git merge --squash ${env.CHANGE_AUTHOR}/${env.CHANGE_BRANCH}
-                git commit --no-edit
-                """.trim()
-            }
-        }
-
-        stage("Setup PNPM") {
-            steps {
-                sh """#!/bin/bash -el
-                pnpm config set network-timeout 1000000
-                pnpm -r exec 'bash' '-c' 'mkdir .mvn'
-                pnpm -r exec 'bash' '-c' 'echo -B > .mvn/maven.config'
-                pnpm -r exec 'bash' '-c' 'echo -ntp >> .mvn/maven.config'
-                pnpm -r exec 'bash' '-c' 'echo -Xmx2g > .mvn/jvm.config'
-                pnpm -F *-image exec sed -i 's/\\("build:prod.*".*\\)podman:build\\(.*\\)/\\1docker:build\\2/g' package.json
-                """.trim()
-            }
-        }
-
-        stage("PNPM Bootstrap") {
-            steps {
-                sh """#!/bin/bash -el
-                export PLAYWRIGHT_BASE__installDeps=true
-                pnpm bootstrap
                 """.trim()
             }
         }
@@ -128,22 +56,85 @@ pipeline {
             }
         }
 
+        stage('Clean workspace before build') {
+            steps {
+                cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            }
+        }
+
+        stage('Checkout kie-tools') {
+            steps {
+                dir('kie-tools') {
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: "${env.CHANGE_TARGET}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'CleanCheckout']],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[credentialsId: 'kie-ci', url: "http://github.com/apache/${env.REPO_NAME}.git"]]
+                    ])
+                }
+            }
+        }
+
+        stage('Merge PR Changes (squashed)') {
+            steps {
+                dir('kie-tools') {
+                    sh """#!/bin/bash -el
+                    git config --global user.email "kietoolsbot@gmail.com"
+                    git config --global user.name "KIE Tools Bot (kiegroup)"
+                    git remote add ${env.CHANGE_AUTHOR} https://github.com/${env.CHANGE_AUTHOR}/${env.REPO_NAME}.git
+                    git fetch ${env.CHANGE_AUTHOR} ${env.CHANGE_BRANCH}
+                    git merge --squash ${env.CHANGE_AUTHOR}/${env.CHANGE_BRANCH}
+                    git commit --no-edit
+                    """.trim()
+                }
+            }
+        }
+
+        stage("Setup PNPM") {
+            steps {
+                dir('kie-tools') {
+                    sh """#!/bin/bash -el
+                    pnpm config set network-timeout 1000000
+                    pnpm -r exec 'bash' '-c' 'mkdir .mvn'
+                    pnpm -r exec 'bash' '-c' 'echo -B > .mvn/maven.config'
+                    pnpm -r exec 'bash' '-c' 'echo -ntp >> .mvn/maven.config'
+                    pnpm -r exec 'bash' '-c' 'echo -Xmx2g > .mvn/jvm.config'
+                    pnpm -F *-image exec sed -i 's/\\("build:prod.*".*\\)podman:build\\(.*\\)/\\1docker:build\\2/g' package.json
+                    """.trim()
+                }
+            }
+        }
+
+        stage("PNPM Bootstrap") {
+            steps {
+                dir('kie-tools') {
+                    sh """#!/bin/bash -el
+                    export PLAYWRIGHT_BASE__installDeps=true
+                    pnpm bootstrap
+                    """.trim()
+                }
+            }
+        }
+
         stage('Build FULL') {
             steps {
-                sh """#!/bin/bash -el
-                export WEBPACK__minimize=false
-                export WEBPACK__tsLoaderTranspileOnl=false
-                export KIE_TOOLS_BUILD__runLinters=true
-                export KIE_TOOLS_BUILD__runTests=true
-                export KIE_TOOLS_BUILD__runEndToEndTests=true
-                export KIE_TOOLS_BUILD__buildContainerImages=true
-                export KIE_TOOLS_BUILD__buildExamples=true
-                export KIE_TOOLS_BUILD__ignoreTestFailures=false
-                export KIE_TOOLS_BUILD__ignoreEndToEndTestFailures=false
-                export START_SERVER_AND_TEST_INSECURE=true
-                export CYPRESS_VERIFY_TIMEOUT=100000
-                pnpm -r --workspace-concurrency=1 build:prod
-                """.trim()
+                dir('kie-tools') {
+                    sh """#!/bin/bash -el
+                    export WEBPACK__minimize=false
+                    export WEBPACK__tsLoaderTranspileOnl=false
+                    export KIE_TOOLS_BUILD__runLinters=true
+                    export KIE_TOOLS_BUILD__runTests=true
+                    export KIE_TOOLS_BUILD__runEndToEndTests=true
+                    export KIE_TOOLS_BUILD__buildContainerImages=true
+                    export KIE_TOOLS_BUILD__buildExamples=true
+                    export KIE_TOOLS_BUILD__ignoreTestFailures=false
+                    export KIE_TOOLS_BUILD__ignoreEndToEndTestFailures=false
+                    export START_SERVER_AND_TEST_INSECURE=true
+                    export CYPRESS_VERIFY_TIMEOUT=100000
+                    pnpm -r --workspace-concurrency=1 build:prod
+                    """.trim()
+                }
             }
         }
 
