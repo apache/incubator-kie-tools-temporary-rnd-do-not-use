@@ -39,13 +39,12 @@ describe("Serverless workflow editor - events tests", () => {
   });
 
   beforeEach(async function () {
-    this.timeout(30000);
     await testHelper.closeAllEditors();
     await testHelper.closeAllNotifications();
   });
 
   afterEach(async function () {
-    this.timeout(30000);
+    this.timeout(15000);
     await testHelper.takeScreenshotOnTestFailure(this, DIST_E2E_TESTS_FOLDER);
     await testHelper.closeAllEditors();
     await testHelper.closeAllNotifications();

@@ -15,12 +15,6 @@ module.exports = function (config) {
     // frameworks to use
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
     frameworks: ["jasmine"],
-    // jasmine timeout interval increased
-    client: {
-      jasmine: {
-        timeoutInterval: 4 * 60 * 1000
-      }
-    },
     // list of files / patterns to load in the browser
     files: [
       "tests/**/*.spec.js",
