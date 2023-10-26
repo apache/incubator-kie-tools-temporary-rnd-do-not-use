@@ -18,7 +18,7 @@ pipeline {
     agent {
         docker {
             image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
-            args '--shm-size=2g --entrypoint="" --privileged --group-add docker --group-add input --group-add render'
+            args '--shm-size=2g --entrypoint="" --privileged --group-add docker'
         }
     }
 
@@ -449,7 +449,7 @@ def pushImageToRegistry(String registry, String account, String image, String ta
 
 def createOrUpdateOpenshiftApp(String appName, String imageTag, String imageUrl, String partOf, String deploymentIcon, String deploymentEnvVarsPath="./deployment.env") {
     withCredentials([usernamePassword(credentialsId: 'openshift-kie-tools-token', usernameVariable: 'OS_SERVER', passwordVariable: 'OS_TOKEN')]) {
-        sh "set +x && oc login --token=$OS_TOKEN --server=$OS_SERVER --insecure-skip-tls-verify"
+        sh 'set +x && oc login --token=$OS_TOKEN --server=$OS_SERVER --insecure-skip-tls-verify'
         sh """#!/bin/bash -el
         if [ ! -f ${deploymentEnvVarsPath} ]; then
           echo "ENV file does not exist"
