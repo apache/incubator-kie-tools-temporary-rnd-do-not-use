@@ -93,7 +93,7 @@ pipeline {
 
         ARTIFACTS_TMP_DIR = "artifacts"
 
-        BUILD_DATE = sh(script: "echo `date '%Y-%m-%d %T'`", returnStdout: true).trim()
+        BUILD_DATE = sh(script: "echo `date +'%Y-%m-%d %T'`", returnStdout: true).trim()
     }
 
     stages {
@@ -431,7 +431,7 @@ pipeline {
     post {
         always {
             // Artifacts
-            archiveArtifacts artifacts: "kie-tools/packages/vscode-extension-dashbuilder-editor/dist/vscode_extension_dashbuilder_editor_${env.VERSION}.vsix, kie-tools/packages/vscode-extension-dashbuilder-editor/dist/vscode_extension_dashbuilder_editor_${env.VERSION}.vsix, kie-tools/packages/kie-editors-dev-vscode-extension/dist/kie_editors_dev_vscode_extension_${env.VERSION}.vsix, kie-tools/packages/chrome-extension-pack-kogito-kie-editors/dist/chrome_extension_kogito_kie_editors_${env.VERSION}.zip, kie-tools/packages/chrome-extension-pack-kogito-kie-editors/dist/chrome_extension_kogito_kie_editors_${env.VERSION}.zip"
+            archiveArtifacts artifacts: "kie-tools/packages/serverless-workflow-vscode-extension/dist/serverless_workflow_vscode_extension_${env.VERSION}.vsix, kie-tools/packages/vscode-extension-dashbuilder-editor/dist/vscode_extension_dashbuilder_editor_${env.VERSION}.vsix, kie-tools/packages/kie-editors-dev-vscode-extension/dist/kie_editors_dev_vscode_extension_${env.VERSION}.vsix, kie-tools/packages/chrome-extension-pack-kogito-kie-editors/dist/chrome_extension_kogito_kie_editors_${env.VERSION}.zip, kie-tools/packages/chrome-extension-serverless-workflow-editor/dist/chrome_extension_serverless_workflow_editor_${env.VERSION}.zip"
 
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
