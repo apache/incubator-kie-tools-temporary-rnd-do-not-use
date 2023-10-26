@@ -18,7 +18,7 @@ pipeline {
     agent {
         docker {
             image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
-            args '--shm-size=2g --entrypoint="" --privileged --group-add docker'
+            args '--shm-size=2g --privileged --group-add docker'
         }
     }
 
@@ -90,8 +90,6 @@ pipeline {
         SERVERLESS_LOGIC_WEB_TOOLS__corsProxyUrl = "https://daily-dev-cors-proxy-kie-sandbox.rhba-0ad6762cc85bcef5745bb684498c2436-0000.us-south.containers.appdomain.cloud"
 
         KIE_TOOLS_QUAY_IO_CREDENTIALS_ID = "quay-io-kie-tools-token"
-
-        ARTIFACTS_TMP_DIR = "artifacts"
 
         BUILD_DATE = sh(script: "echo `date +'%Y-%m-%d %T'`", returnStdout: true).trim()
     }
