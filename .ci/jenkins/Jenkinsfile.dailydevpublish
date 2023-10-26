@@ -155,6 +155,7 @@ pipeline {
             steps {
                 dir('kie-tools') {
                     sh """#!/bin/bash -el
+                    env
                     pnpm config set network-timeout 1000000
                     pnpm -r exec 'bash' '-c' 'mkdir .mvn'
                     pnpm -r exec 'bash' '-c' 'echo -B > .mvn/maven.config'
