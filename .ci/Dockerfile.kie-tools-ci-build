@@ -1,6 +1,6 @@
 FROM cruizba/ubuntu-dind:latest
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     sudo bash wget gpg locales uidmap apt-transport-https ca-certificates curl software-properties-common \
     && rm -rf /var/lib/apt/lists/* \
 	&& localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
@@ -40,7 +40,8 @@ RUN wget -O /tmp/firefox-latest.tar.bz2 "https://download.mozilla.org/?product=f
     ln -s /opt/firefox-latest/firefox /usr/bin/firefox
 
 # Install chromedriver
-RUN wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/118.0.5993.88/linux64/chromedriver-linux64.zip && \
+RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}') && \
+    wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/linux64/chromedriver-linux64.zip && \
     unzip /tmp/chromedriver-linux64.zip -d /tmp && mv /tmp/chromedriver-linux64/chromedriver /usr/bin/
 
 RUN echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf && sysctl -p
