@@ -14,9 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// Use Jenkins agent nodes with higher capacity (builds22 to builds40)
+def agentLabels = (22..40).collect{"builds$it"}.join(" || ")
+
 pipeline {
     agent {
         docker {
+            label("${agentLabels}")
             image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
             args '--shm-size=2g --privileged --group-add docker'
         }
