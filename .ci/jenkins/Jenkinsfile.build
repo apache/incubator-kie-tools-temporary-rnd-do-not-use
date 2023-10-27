@@ -17,7 +17,6 @@
 pipeline {
     agent {
         docker {
-            label 'builds22'
             image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
             args '--shm-size=2g --privileged --group-add docker'
         }
