@@ -60,7 +60,7 @@ describe("KIE Editors End to End Test Suite - BPMN Editor", () => {
   });
 
   beforeEach(async function () {
-    this.timeout(15000);
+    this.timeout(30000);
     await testHelper.closeAllEditors();
     await testHelper.closeAllNotifications();
   });
