@@ -31,6 +31,7 @@ vim \
 make \
 zip \
 unzip \
+bzip2 \
 xvfb \
 fluxbox
 
@@ -111,6 +112,14 @@ RUN wget https://github.com/github/codeql-action/releases/download/codeql-bundle
 # Openshift client setup
 RUN wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -P /tmp && \
     sudo tar -C /usr/bin/ -xvzf /tmp/openshift-client-linux.tar.gz oc
+
+# Github release tool setup
+RUN wget https://github.com/github-release/github-release/releases/download/v0.10.0/linux-amd64-github-release.bz2 -P /tmp && \
+    sudo bzip2 -d /tmp/linux-amd64-github-release.bz2 && sudo mv /tmp/linux-amd64-github-release /usr/bin/github-release && \
+    sudo chmod +x /usr/bin/github-release
+
+# Cleanup /tmp
+RUN sudo rm -rf /tmp/*
 
 # Env vars
 ENV JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
