@@ -15,8 +15,9 @@
  * limitations under the License.
  */
 
-// Use Jenkins agent nodes with higher capacity (builds22 to builds40)
-def agentLabels = (22..40).collect{"builds$it"}.join(" || ")
+@Library('kie-tools-pipeline-lib')_
+
+def agentLabels = apacheAgentLabels()
 
 pipeline {
     agent {
@@ -37,26 +38,14 @@ pipeline {
         END_TO_END_TESTS_REPORTS_PATTERNS = "kie-tools/packages/**/dist-e2e-tests/junit-report*.xml kie-tools/examples/**/dist-e2e-tests/junit-report*.xml kie-tools/packages/**/target/failsafe-reports/TEST-*.xml kie-tools/examples/**/target/failsafe-reports/TEST-*.xml"
         END_TO_END_TESTS_ARTIFACTS_PATTERNS = "kie-tools/packages/**/dist-e2e-tests kie-tools/examples/**/dist-e2e-tests"
         BUILD_ARTIFACTS_PATTERNS = "kie-tools/packages/**/dist kie-tools/examples/**/dist"
-        ARTIFACTS_TMP_DIR = "artifacts-tmp"
-        REPO_NAME = "incubator-kie-tools-temporary-rnd-do-not-use"
     }
 
     stages {
-        stage('Start Docker in Docker') {
+        stage('Start required services for build and tests (DinD, Xvfb, Fluxbox)') {
             steps {
-                sh """#!/bin/bash -el
-                sudo entrypoint.sh
-                sudo service dbus start
-                """.trim()
-            }
-        }
-
-        stage('Start Xvfb and Fluxbox') {
-            steps {
-                sh """#!/bin/bash -el
-                Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-                fluxbox -display :99 > /dev/null 2>&1 &
-                """.trim()
+                script {
+                    buildUtils.startRequiredServices()
+                }
             }
         }
 
@@ -69,13 +58,13 @@ pipeline {
         stage('Checkout kie-tools') {
             steps {
                 dir('kie-tools') {
-                    checkout([$class: 'GitSCM',
-                        branches: [[name: "${env.CHANGE_TARGET}"]],
-                        doGenerateSubmoduleConfigurations: false,
-                        extensions: [[$class: 'CleanCheckout']],
-                        submoduleCfg: [],
-                        userRemoteConfigs: [[credentialsId: 'kie-ci', url: "http://github.com/apache/${env.REPO_NAME}.git"]]
-                    ])
+                    script {
+                        githubUtils.checkoutRepo(
+                            "http://github.com/${pipelineVars.githubRepository}",
+                            "${env.CHANGE_TARGET}",
+                            "${pipelineVars.kieToolsBotGithubCredentialsId}"
+                        )
+                    }
                 }
             }
         }
@@ -83,14 +72,13 @@ pipeline {
         stage('Merge PR Changes (squashed)') {
             steps {
                 dir('kie-tools') {
-                    sh """#!/bin/bash -el
-                    git config --global user.email "kietoolsbot@gmail.com"
-                    git config --global user.name "KIE Tools Bot (kiegroup)"
-                    git remote add ${env.CHANGE_AUTHOR} https://github.com/${env.CHANGE_AUTHOR}/${env.REPO_NAME}.git
-                    git fetch ${env.CHANGE_AUTHOR} ${env.CHANGE_BRANCH}
-                    git merge --squash ${env.CHANGE_AUTHOR}/${env.CHANGE_BRANCH}
-                    git commit --no-edit
-                    """.trim()
+                    script {
+                        githubUtils.squashedMerge(
+                            "${env.CHANGE_AUTHOR}",
+                            "${env.CHANGE_BRANCH}",
+                            "${pipelineVars.githubRepository}"
+                        )
+                    }
                 }
             }
         }
@@ -98,14 +86,9 @@ pipeline {
         stage("Setup PNPM") {
             steps {
                 dir('kie-tools') {
-                    sh """#!/bin/bash -el
-                    pnpm config set network-timeout 1000000
-                    pnpm -r exec 'bash' '-c' 'mkdir .mvn'
-                    pnpm -r exec 'bash' '-c' 'echo -B > .mvn/maven.config'
-                    pnpm -r exec 'bash' '-c' 'echo -ntp >> .mvn/maven.config'
-                    pnpm -r exec 'bash' '-c' 'echo -Xmx2g > .mvn/jvm.config'
-                    pnpm -F *-image exec sed -i 's/\\("build:prod.*".*\\)podman:build\\(.*\\)/\\1docker:build\\2/g' package.json
-                    """.trim()
+                    script {
+                        buildUtils.setupPnpm()
+                    }
                 }
             }
         }
@@ -144,23 +127,22 @@ pipeline {
 
         stage('Zip artifacts') {
             steps {
-                sh """#!/bin/bash -el
-                mkdir ${ARTIFACTS_TMP_DIR}
-                output_empty_zip () { echo UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA== | base64 -d; }
-                zip -r ${ARTIFACTS_TMP_DIR}/build-artifacts.zip $BUILD_ARTIFACTS_PATTERNS || output_empty_zip > ${ARTIFACTS_TMP_DIR}/build-artifacts.zip
-                zip -r ${ARTIFACTS_TMP_DIR}/tests-reports.zip $TESTS_REPORTS_PATTERNS || output_empty_zip > ${ARTIFACTS_TMP_DIR}/tests-reports.zip
-                zip -r ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports.zip $END_TO_END_TESTS_REPORTS_PATTERNS || output_empty_zip > ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports.zip
-                zip -r ${ARTIFACTS_TMP_DIR}/end-to-end-tests-artifacts.zip $END_TO_END_TESTS_ARTIFACTS_PATTERNS || output_empty_zip > ${ARTIFACTS_TMP_DIR}/end-to-end-tests-artifacts.zip
-                """.trim()
+                script {
+                    sh "mkdir ${pipelineVars.defaultArtifactsTempDir}"
+                    zipUtils.zipArtifact("${pipelineVars.defaultArtifactsTempDir}/build-artifacts.zip", "${env.BUILD_ARTIFACTS_PATTERNS}")
+                    zipUtils.zipArtifact("${pipelineVars.defaultArtifactsTempDir}/tests-reports.zip", "${env.TESTS_REPORTS_PATTERNS}")
+                    zipUtils.zipArtifact("${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-reports.zip", "${env.END_TO_END_TESTS_REPORTS_PATTERNS}")
+                    zipUtils.zipArtifact("${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-artifacts.zip", "${env.END_TO_END_TESTS_ARTIFACTS_PATTERNS}")
+                }
             }
         }
 
         stage('Prepare test reports for junit') {
             steps {
-                sh """#!/bin/bash -el
-                unzip ${ARTIFACTS_TMP_DIR}/tests-reports.zip -d ${ARTIFACTS_TMP_DIR}/test-reports
-                unzip ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports.zip -d ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports
-                """.trim()
+                script {
+                    zipUtils.unzipArtifact("${pipelineVars.defaultArtifactsTempDir}/tests-reports.zip", "${pipelineVars.defaultArtifactsTempDir}/test-reports")
+                    zipUtils.unzipArtifact("${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-reports.zip", "${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-reports")
+                }
             }
         }
     }
@@ -169,16 +151,16 @@ pipeline {
         always {
             // Tests reports
             withChecks('Tests') {
-                junit allowEmptyResults: true, testResults: "${ARTIFACTS_TMP_DIR}/test-reports/**/junit-report*.xml"
+                junit allowEmptyResults: true, testResults: "${pipelineVars.defaultArtifactsTempDir}/test-reports/**/junit-report*.xml"
             }
 
             // E2E Tests reports
             withChecks('E2E Tests') {
-                junit allowEmptyResults: true, testResults: "${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports/**/junit-report*.xml"
+                junit allowEmptyResults: true, testResults: "${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-reports/**/junit-report*.xml"
             }
 
             // Artifacts
-            archiveArtifacts artifacts: "${ARTIFACTS_TMP_DIR}/build-artifacts.zip, ${ARTIFACTS_TMP_DIR}/tests-reports.zip, ${ARTIFACTS_TMP_DIR}/end-to-end-tests-reports.zip, ${ARTIFACTS_TMP_DIR}/end-to-end-tests-artifacts.zip", fingerprint: true
+            archiveArtifacts artifacts: "${pipelineVars.defaultArtifactsTempDir}/build-artifacts.zip, ${pipelineVars.defaultArtifactsTempDir}/tests-reports.zip, ${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-reports.zip, ${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-artifacts.zip", fingerprint: true
 
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
