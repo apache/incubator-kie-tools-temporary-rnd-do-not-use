@@ -17,7 +17,7 @@
 
 @Library('kie-tools-pipeline-lib')_
 
-def agentLabels = apacheAgentLabels()
+def agentLabels = buildUtils.apacheAgentLabels()
 
 pipeline {
     agent {
