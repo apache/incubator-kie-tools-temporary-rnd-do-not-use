@@ -78,3 +78,10 @@ def startRequiredServices() {
 def buildDateTime() {
     return sh(script: "echo `date +'%Y-%m-%d %T'`", returnStdout: true).trim()
 }
+
+/**
+* @return String the Apache Jenkins agent nodes with higher capacity (builds22 to builds40)
+**/
+def apacheAgentLabels() {
+    return (22..40).collect{"builds$it"}.join(" || ")
+}
