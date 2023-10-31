@@ -74,6 +74,20 @@ def checkoutRepo(String url, String branch, String credentialsId) {
 }
 
 /**
+* Perform a squashed merge on a local repository
+*/
+def squashedMerge(String author, String branch, String repository) {
+    sh """#!/bin/bash -el
+    git config --global user.email "kietoolsbot@gmail.com"
+    git config --global user.name "KIE Tools Bot (kiegroup)"
+    git remote add ${author} https://github.com/${repository}.git
+    git fetch ${author} ${branch}
+    git merge --squash ${author}/${branch}
+    git commit --no-edit
+    """.trim()
+}
+
+/**
 * @return the Github repository slug (org/repo) from an URL
 */
 def getRepoSlug(String url) {
