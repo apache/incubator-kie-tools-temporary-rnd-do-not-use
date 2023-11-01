@@ -108,7 +108,27 @@ pipeline {
         stage('Checkout kie-tools') {
             steps {
                 dir('kie-tools') {
-                    checkout scm
+                    script {
+                        githubUtils.checkoutRepo(
+                            "http://github.com/${pipelineVars.githubRepositorySlug}.git",
+                            "main",
+                            "${pipelineVars.kieToolsBotGithubCredentialsId}"
+                        )
+                    }
+                }
+            }
+        }
+
+        stage('Merge Changes (squashed)') {
+            steps {
+                dir('kie-tools') {
+                    script {
+                        githubUtils.squashedMerge(
+                            "${pipelineVars.githubRepositoryOrg}",
+                            "${params.BASE_REF}",
+                            "${pipelineVars.githubRepositorySlug}"
+                        )
+                    }
                 }
             }
         }
