@@ -107,7 +107,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: ${pipelineVars.kieToolsBotGithubTokenCredentialsID}, variable: "GITHUB_TOKEN")]) {
                     script {
-                        def repoSlug = getRepoSlug()
+                        def repoSlug = githubUtils.getRepoSlug("${env.CHANGE_URL}")
 
                         sh """#!/bin/bash -el
                         # GO results
