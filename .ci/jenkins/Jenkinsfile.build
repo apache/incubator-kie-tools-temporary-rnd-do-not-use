@@ -60,7 +60,7 @@ pipeline {
                 dir('kie-tools') {
                     script {
                         githubUtils.checkoutRepo(
-                            "http://github.com/${pipelineVars.githubRepository}",
+                            "http://github.com/${pipelineVars.githubRepositorySlug}",
                             "${env.CHANGE_TARGET}",
                             "${pipelineVars.kieToolsBotGithubCredentialsId}"
                         )
@@ -76,7 +76,7 @@ pipeline {
                         githubUtils.squashedMerge(
                             "${env.CHANGE_AUTHOR}",
                             "${env.CHANGE_BRANCH}",
-                            "${pipelineVars.githubRepository}"
+                            "${env.CHANGE_AUTHOR}/${pipelineVars.githubRepositoryName}"
                         )
                     }
                 }
