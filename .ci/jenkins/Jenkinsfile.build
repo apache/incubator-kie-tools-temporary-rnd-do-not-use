@@ -60,7 +60,7 @@ pipeline {
                 dir('kie-tools') {
                     script {
                         githubUtils.checkoutRepo(
-                            "http://github.com/${pipelineVars.githubRepositorySlug}",
+                            "http://github.com/${pipelineVars.githubRepositorySlug}.git",
                             "${env.CHANGE_TARGET}",
                             "${pipelineVars.kieToolsBotGithubCredentialsId}"
                         )
