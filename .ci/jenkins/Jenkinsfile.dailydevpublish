@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
- @Library('kie-tools-pipeline-lib')_
+@Library('kie-tools-pipeline-lib')_
 
 pipeline {
     agent {
