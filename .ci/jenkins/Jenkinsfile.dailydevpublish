@@ -14,6 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+ @Library('kie-tools-pipeline-lib')_
+
 pipeline {
     agent {
         docker {
@@ -89,39 +92,15 @@ pipeline {
         SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageBuildTags = "daily-dev"
         SERVERLESS_LOGIC_WEB_TOOLS__corsProxyUrl = "https://daily-dev-cors-proxy-kie-sandbox.rhba-0ad6762cc85bcef5745bb684498c2436-0000.us-south.containers.appdomain.cloud"
 
-        KIE_TOOLS_QUAY_IO_CREDENTIALS_ID = "quay-io-kie-tools-token"
-
         BUILD_DATE = sh(script: "echo `date +'%Y-%m-%d %T'`", returnStdout: true).trim()
     }
 
     stages {
-        stage('Pre-check') {
+        stage('Start required services for build and tests (DinD, Xvfb, Fluxbox)') {
             steps {
-                sh """#!/bin/bash -el
-                java --version
-                mvn --version
-                node --version
-                go version
-                pnpm --version
-                """.trim()
-            }
-        }
-
-        stage('Start Docker in Docker') {
-            steps {
-                sh """#!/bin/bash -el
-                sudo entrypoint.sh
-                sudo service dbus start
-                """.trim()
-            }
-        }
-
-        stage('Start Xvfb and Fluxbox') {
-            steps {
-                sh """#!/bin/bash -el
-                Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-                fluxbox -display :99 > /dev/null 2>&1 &
-                """.trim()
+                script {
+                    buildUtils.startRequiredServices()
+                }
             }
         }
 
@@ -152,14 +131,9 @@ pipeline {
         stage("Setup PNPM") {
             steps {
                 dir('kie-tools') {
-                    sh """#!/bin/bash -el
-                    pnpm config set network-timeout 1000000
-                    pnpm -r exec 'bash' '-c' 'mkdir .mvn'
-                    pnpm -r exec 'bash' '-c' 'echo -B > .mvn/maven.config'
-                    pnpm -r exec 'bash' '-c' 'echo -ntp >> .mvn/maven.config'
-                    pnpm -r exec 'bash' '-c' 'echo -Xmx2g > .mvn/jvm.config'
-                    pnpm -F *-image exec sed -i 's/\\("build:prod.*".*\\)podman:build\\(.*\\)/\\1docker:build\\2/g' package.json
-                    """.trim()
+                    script {
+                        buildUtils.setupPnpm()
+                    }
                 }
             }
         }
@@ -199,12 +173,12 @@ pipeline {
         stage('Push dmn-dev-deployment-base-image to quay.io') {
             steps {
                 script {
-                    pushImageToRegistry(
+                    dockerUtils.pushImageToRegistry(
                         "${env.DMN_DEV_DEPLOYMENT_BASE_IMAGE__registry}/${env.DMN_DEV_DEPLOYMENT_BASE_IMAGE__account}",
                         "${env.DMN_DEV_DEPLOYMENT_BASE_IMAGE__account}",
                         "${env.DMN_DEV_DEPLOYMENT_BASE_IMAGE__name}",
                         "${env.DMN_DEV_DEPLOYMENT_BASE_IMAGE__buildTags}",
-                        "${env.KIE_TOOLS_QUAY_IO_CREDENTIALS_ID}"
+                        "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }
@@ -213,12 +187,12 @@ pipeline {
         stage('Push kie-sandbox-extended-services-image to quay.io') {
             steps {
                 script {
-                    pushImageToRegistry(
+                    dockerUtils.pushImageToRegistry(
                         "${env.KIE_SANDBOX_EXTENDED_SERVICES__imageRegistry}/${env.KIE_SANDBOX_EXTENDED_SERVICES__imageAccount}",
                         "${env.KIE_SANDBOX_EXTENDED_SERVICES__imageAccount}",
                         "${env.KIE_SANDBOX_EXTENDED_SERVICES__imageName}",
                         "${env.KIE_SANDBOX_EXTENDED_SERVICES__imageBuildTags}",
-                        "${env.KIE_TOOLS_QUAY_IO_CREDENTIALS_ID}"
+                        "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }
@@ -227,12 +201,13 @@ pipeline {
         stage('Deploy kie-sandbox-extended-services-image to OpenShift') {
             steps {
                 script {
-                    env.KIE_SANDBOX_EXTENDED_SERVICES_URL = createOrUpdateOpenshiftApp(
+                    env.KIE_SANDBOX_EXTENDED_SERVICES_URL = openShiftUtils.createOrUpdateApp(
                         "daily-dev-kie-sandbox-extended-services",
                         "${env.DEPLOY_TAG}",
                         "${env.KIE_SANDBOX_EXTENDED_SERVICES__imageRegistry}/${env.KIE_SANDBOX_EXTENDED_SERVICES__imageAccount}/${env.KIE_SANDBOX_EXTENDED_SERVICES__imageName}:${env.DEPLOY_TAG}",
                         "${env.OPENSHIFT_PART_OF}",
-                        "golang"
+                        "golang",
+                        "${pipelineVars.openshiftCredentialsId}"
                     )
                 }
             }
@@ -241,12 +216,12 @@ pipeline {
         stage('Push cors-proxy-image to quay.io') {
             steps {
                 script {
-                    pushImageToRegistry(
+                    dockerUtils.pushImageToRegistry(
                         "${env.CORS_PROXY_IMAGE__imageRegistry}/${env.CORS_PROXY_IMAGE__imageAccount}",
                         "${env.CORS_PROXY_IMAGE__imageAccount}",
                         "${env.CORS_PROXY_IMAGE__imageName}",
                         "${env.CORS_PROXY_IMAGE__imageBuildTags}",
-                        "${env.KIE_TOOLS_QUAY_IO_CREDENTIALS_ID}"
+                        "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }
@@ -255,12 +230,13 @@ pipeline {
         stage('Deploy cors-proxy-image to OpenShift') {
             steps {
                 script {
-                    env.KIE_SANDBOX_CORS_PROXY_URL = createOrUpdateOpenshiftApp(
+                    env.KIE_SANDBOX_CORS_PROXY_URL = openShiftUtils.createOrUpdateApp(
                         "daily-dev-cors-proxy",
                         "${env.DEPLOY_TAG}",
                         "${env.CORS_PROXY_IMAGE__imageRegistry}/${env.CORS_PROXY_IMAGE__imageAccount}/${env.CORS_PROXY_IMAGE__imageName}:${env.DEPLOY_TAG}",
                         "${env.OPENSHIFT_PART_OF}",
-                        "nodejs"
+                        "nodejs",
+                        "${pipelineVars.openshiftCredentialsId}"
                     )
                 }
             }
@@ -269,12 +245,12 @@ pipeline {
         stage('Push kie-sandbox-image to quay.io') {
             steps {
                 script {
-                    pushImageToRegistry(
+                    dockerUtils.pushImageToRegistry(
                         "${env.KIE_SANDBOX__imageRegistry}/${env.KIE_SANDBOX__imageAccount}",
                         "${env.KIE_SANDBOX__imageAccount}",
                         "${env.KIE_SANDBOX__imageName}",
                         "${env.KIE_SANDBOX__imageBuildTags}",
-                        "${env.KIE_TOOLS_QUAY_IO_CREDENTIALS_ID}"
+                        "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }
@@ -292,12 +268,13 @@ pipeline {
         stage('Deploy kie-sandbox-image to OpenShift') {
             steps {
                 script {
-                    createOrUpdateOpenshiftApp(
+                    openShiftUtils.createOrUpdateApp(
                         "daily-dev-kie-sandbox",
                         "${env.DEPLOY_TAG}",
                         "${env.KIE_SANDBOX__imageRegistry}/${env.KIE_SANDBOX__imageAccount}/${env.KIE_SANDBOX__imageName}:${env.DEPLOY_TAG}",
                         "${env.OPENSHIFT_PART_OF}",
                         "js",
+                        "${pipelineVars.openshiftCredentialsId}",
                         "./deployment.env"
                     )
                 }
@@ -307,12 +284,12 @@ pipeline {
         stage('Push serverless-logic-web-tools-swf-builder-image to quay.io') {
             steps {
                 script {
-                    pushImageToRegistry(
+                    dockerUtils.pushImageToRegistry(
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageRegistry}/${env.SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageAccount}",
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageAccount}",
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageName}",
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageBuildTags}",
-                        "${env.KIE_TOOLS_QUAY_IO_CREDENTIALS_ID}"
+                        "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }
@@ -321,12 +298,12 @@ pipeline {
         stage('Push serverless-logic-web-tools-base-builder-image to quay.io') {
             steps {
                 script {
-                    pushImageToRegistry(
+                    dockerUtils.pushImageToRegistry(
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__baseBuilderImageRegistry}/${env.SERVERLESS_LOGIC_WEB_TOOLS__baseBuilderImageAccount}",
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__baseBuilderImageAccount}",
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__baseBuilderImageName}",
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__baseBuilderImageBuildTags}",
-                        "${env.KIE_TOOLS_QUAY_IO_CREDENTIALS_ID}"
+                        "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }
@@ -335,12 +312,12 @@ pipeline {
         stage('Push serverless-logic-web-tools-swf-dev-mode-image to quay.io') {
             steps {
                 script {
-                    pushImageToRegistry(
+                    dockerUtils.pushImageToRegistry(
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageRegistry}/${env.SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageAccount}",
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageAccount}",
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageName}",
                         "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageBuildTags}",
-                        "${env.KIE_TOOLS_QUAY_IO_CREDENTIALS_ID}"
+                        "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }
@@ -349,12 +326,12 @@ pipeline {
         stage('Push dashbuilder-viewer-image to quay.io') {
             steps {
                 script {
-                    pushImageToRegistry(
+                    dockerUtils.pushImageToRegistry(
                         "${env.DASHBUILDER__viewerImageRegistry}/${env.DASHBUILDER__viewerImageAccount}",
                         "${env.DASHBUILDER__viewerImageAccount}",
                         "${env.DASHBUILDER__viewerImageName}",
                         "${env.DASHBUILDER__viewerImageBuildTags}",
-                        "${env.KIE_TOOLS_QUAY_IO_CREDENTIALS_ID}"
+                        "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }
@@ -363,33 +340,30 @@ pipeline {
         stage('Update kogito-online resources') {
             steps {
                 dir('kogito-online') {
-                    sh """#!/bin/bash -el
-                    git config --global user.email 'kietoolsbot@gmail.com'
-                    git config --global user.name 'KIE Tools Bot (kiegroup)'
-                    """.trim()
+                    script {
+                        githubUtils.checkoutRepo(
+                            "https://github.com/kiegroup/kogito-online.git",
+                            "gh-pages",
+                            "${pipelineVars.kieToolsBotGithubCredentialsId}"
+                        )
 
-                    checkout([$class: 'GitSCM',
-                        branches: [[name: 'gh-pages']],
-                        doGenerateSubmoduleConfigurations: false,
-                        extensions: [[$class: 'CloneOption', noTags: false, reference: '', shallow: false]],
-                        submoduleCfg: [],
-                        userRemoteConfigs: [[credentialsId: 'kie-tools-bot-gh', url: 'https://github.com/kiegroup/kogito-online.git']]
-                    ])
+                        sh """#!/bin/bash -el
+                        git config --global user.email 'kietoolsbot@gmail.com'
+                        git config --global user.name 'KIE Tools Bot (kiegroup)'
+                        git checkout gh-pages
+                        rm -rf dev && mkdir -p dev/editors
+                        cp -RL ../kie-tools/packages/stunner-editors/dist/dmn dev/editors/
+                        cp -RL ../kie-tools/packages/stunner-editors/dist/bpmn dev/editors/
+                        cp -RL ../kie-tools/packages/stunner-editors/dist/scesim dev/editors/
+                        cp -r ../kie-tools/packages/online-editor/dist/* dev/
+                        rm -rf dev/gwt-editors
+                        ln -s editors dev/gwt-editors
+                        git add . && git commit -m "KIE Tools Daily Dev Build resources - ${env.BUILD_DATE}" || echo 'No changes.'
+                        """.trim()
 
-                    sh """#!/bin/bash -el
-                    git checkout gh-pages
-                    rm -rf dev && mkdir -p dev/editors
-                    cp -RL ../kie-tools/packages/stunner-editors/dist/dmn dev/editors/
-                    cp -RL ../kie-tools/packages/stunner-editors/dist/bpmn dev/editors/
-                    cp -RL ../kie-tools/packages/stunner-editors/dist/scesim dev/editors/
-                    cp -r ../kie-tools/packages/online-editor/dist/* dev/
-                    rm -rf dev/gwt-editors
-                    ln -s editors dev/gwt-editors
-                    git add . && git commit -m "KIE Tools Daily Dev Build resources - ${env.BUILD_DATE}" || echo 'No changes.'
-                    """.trim()
-
-                    withCredentials([usernamePassword(credentialsId: 'kie-tools-bot-gh', usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
-                        sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/kogito-online.git gh-pages')
+                        withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: "GH_USER", passwordVariable: "GH_PASSWORD")]) {
+                            sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/kogito-online.git gh-pages')
+                        }
                     }
                 }
             }
@@ -398,28 +372,25 @@ pipeline {
         stage('Update serverless-logic-sandbox-deployment') {
             steps {
                 dir('serverless-logic-sandbox-deployment') {
-                    sh """#!/bin/bash -el
-                    git config --global user.email 'kietoolsbot@gmail.com'
-                    git config --global user.name 'KIE Tools Bot (kiegroup)'
-                    """.trim()
+                    script {
+                        githubUtils.checkoutRepo(
+                            "https://github.com/kiegroup/serverless-logic-sandbox-deployment.git",
+                            "gh-pages",
+                            "${pipelineVars.kieToolsBotGithubCredentialsId}"
+                        )
 
-                    checkout([$class: 'GitSCM',
-                        branches: [[name: 'gh-pages']],
-                        doGenerateSubmoduleConfigurations: false,
-                        extensions: [[$class: 'CloneOption', noTags: false, reference: '', shallow: false]],
-                        submoduleCfg: [],
-                        userRemoteConfigs: [[credentialsId: 'kie-tools-bot-gh', url: 'https://github.com/kiegroup/serverless-logic-sandbox-deployment.git']]
-                    ])
+                        sh """#!/bin/bash -el
+                        git config --global user.email 'kietoolsbot@gmail.com'
+                        git config --global user.name 'KIE Tools Bot (kiegroup)'
+                        git checkout gh-pages
+                        rm -rf dev && mkdir dev
+                        cp -r ../kie-tools/packages/serverless-logic-web-tools/dist/* dev/
+                        git add . && git commit -m "KIE Tools Daily Dev Build resources - ${env.BUILD_DATE}" || echo 'No changes.'
+                        """.trim()
 
-                    sh """#!/bin/bash -el
-                    git checkout gh-pages
-                    rm -rf dev && mkdir dev
-                    cp -r ../kie-tools/packages/serverless-logic-web-tools/dist/* dev/
-                    git add . && git commit -m "KIE Tools Daily Dev Build resources - ${env.BUILD_DATE}" || echo 'No changes.'
-                    """.trim()
-
-                    withCredentials([usernamePassword(credentialsId: 'kie-tools-bot-gh', usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
-                        sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/serverless-logic-sandbox-deployment.git gh-pages')
+                        withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: "GH_USER", passwordVariable: "GH_PASSWORD")]) {
+                            sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/serverless-logic-sandbox-deployment.git gh-pages')
+                        }
                     }
                 }
             }
@@ -434,58 +405,5 @@ pipeline {
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
-    }
-}
-
-def pushImageToRegistry(String registry, String account, String image, String tag, String credentialsId) {
-    withCredentials([usernamePassword(credentialsId: credentialsId, usernameVariable: 'REGISTRY_USER', passwordVariable: 'REGISTRY_PWD')]) {
-        sh "set +x && docker login -u $REGISTRY_USER -p $REGISTRY_PWD $registry"
-        sh "docker push $registry/$image:$tag"
-        sh "docker logout"
-    }
-}
-
-def createOrUpdateOpenshiftApp(String appName, String imageTag, String imageUrl, String partOf, String deploymentIcon, String deploymentEnvVarsPath="./deployment.env") {
-    withCredentials([usernamePassword(credentialsId: 'openshift-kie-tools-token', usernameVariable: 'OS_SERVER', passwordVariable: 'OS_TOKEN')]) {
-        sh 'set +x && oc login --token=$OS_TOKEN --server=$OS_SERVER --insecure-skip-tls-verify'
-        sh """#!/bin/bash -el
-        if [ ! -f ${deploymentEnvVarsPath} ]; then
-          echo "ENV file does not exist"
-          touch ${deploymentEnvVarsPath}
-        fi
-
-        if ! oc get deploy ${appName} > /dev/null 2>&1; then
-          echo "Create the app '${appName}'"
-
-          oc create imagestream ${appName}
-          oc import-image ${appName}:${imageTag} --from=${imageUrl} --confirm
-          oc tag ${appName}:${imageTag} ${appName}:latest
-
-          oc label imagestreams/${appName} app=${appName}
-          oc label imagestreams/${appName} app.kubernetes.io/component=${appName}
-          oc label imagestreams/${appName} app.kubernetes.io/instance=${appName}
-          oc label imagestreams/${appName} app.kubernetes.io/part-of=${partOf}
-
-          oc new-app ${appName}:latest --name=${appName} --env-file=${deploymentEnvVarsPath}
-          oc create route edge --service=${appName}
-
-          oc label services/${appName} app.kubernetes.io/part-of=${partOf}
-          oc label routes/${appName} app.kubernetes.io/part-of=${partOf}
-          oc label deployments/${appName} app.kubernetes.io/part-of=${partOf}
-          oc label deployments/${appName} app.openshift.io/runtime=${deploymentIcon}
-        else
-          echo "App '${appName}' already exists. Update the ImageStream instead."
-          oc tag -d ${appName}:latest
-          oc import-image ${appName}:${imageTag} --from=${imageUrl} --confirm
-          oc tag ${appName}:${imageTag} ${appName}:latest
-          cat ${deploymentEnvVarsPath} | oc set env deploy/${appName} -
-        fi
-        """.trim()
-
-        route = sh(returnStdout: true, script: "oc get route ${appName} -o jsonpath='{.spec.host}'").trim()
-
-        sh "oc logout"
-
-        return "https://${route}"
     }
 }
