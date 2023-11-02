@@ -52,7 +52,7 @@ def uploadReleaseAsset(String uploadUrl, String assetPath, String assetName, Str
         -H "Authorization: Bearer ${GITHUB_TOKEN}" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
         -H "Content-Type: ${assetContentType}" \
-        "${uploadUrl}=${assetName}" \
+        "${uploadUrl}?name=${assetName}" \
         --data-binary "@${assetPath}"
         """.trim()
 
