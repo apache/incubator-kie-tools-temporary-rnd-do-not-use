@@ -563,6 +563,9 @@ pipeline {
             }
         }
 
+        // STAGING: Upload Extended Services for macOS (macOS only)
+        // STAGING: Upload Extended Services for Windows (Windows only)
+
         stage('STAGING: Upload Knative CLI Workflow Plugin for Linux') {
             when {
                 expression { !params.DRY_RUN }
@@ -614,7 +617,7 @@ pipeline {
             }
         }
 
-        stage('STAGING: Knative CLI Workflow Plugin for Windows') {
+        stage('STAGING: Upload Knative CLI Workflow Plugin for Windows') {
             when {
                 expression { !params.DRY_RUN }
             }
@@ -872,24 +875,10 @@ pipeline {
                 }
             }
         }
-
-        stage('Move artifacts') {
-            steps {
-                script {
-                    sh """#!/bin/bash -el
-                    mkdir ${pipelineVars.defaultArtifactsTempDir}
-                    mv kie-tools/packages/serverless-workflow-vscode-extension/dist/serverless_workflow_vscode_extension_${env.VERSION}.vsix ${pipelineVars.defaultArtifactsTempDir}
-                    """.trim()
-                }
-            }
-        }
     }
 
     post {
         always {
-            // Artifacts
-            archiveArtifacts artifacts: "kie-tools/packages/serverless-workflow-vscode-extension/dist/serverless_workflow_vscode_extension_${env.VERSION}.vsix, kie-tools/packages/vscode-extension-dashbuilder-editor/dist/vscode_extension_dashbuilder_editor_${env.VERSION}.vsix, kie-tools/packages/kie-editors-dev-vscode-extension/dist/kie_editors_dev_vscode_extension_${env.VERSION}.vsix, kie-tools/packages/chrome-extension-pack-kogito-kie-editors/dist/chrome_extension_kogito_kie_editors_${env.VERSION}.zip, kie-tools/packages/chrome-extension-serverless-workflow-editor/dist/chrome_extension_serverless_workflow_editor_${env.VERSION}.zip"
-
             // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
