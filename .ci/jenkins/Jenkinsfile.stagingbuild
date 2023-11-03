@@ -529,6 +529,23 @@ pipeline {
             }
         }
 
+        stage('STAGING: Upload Chrome Extension for Serverless Workflow Editor') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                script {
+                    githubUtils.uploadReleaseAsset(
+                        "${params.UPLOAD_ASSET_URL}",
+                        "kie-tools/packages/chrome-extension-serverless-workflow-editor/dist/chrome_extension_serverless_workflow_editor_${params.TAG}.zip",
+                        "STAGING__chrome_extension_serverless_workflow_editor_${params.TAG}.zip",
+                        "application/zip",
+                        "${pipelineVars.kieToolsBotGithubTokenCredentialsID}"
+                    )
+                }
+            }
+        }
+
         stage('STAGING: Upload Extended Services for Linux') {
             when {
                 expression { !params.DRY_RUN }
@@ -572,7 +589,7 @@ pipeline {
                     githubUtils.uploadReleaseAsset(
                         "${params.UPLOAD_ASSET_URL}",
                         "kie-tools/packages/kn-plugin-workflow/dist/kn-workflow-darwin-amd64",
-                        "STAGING__kn-workflow-darwin-amd64-${param.TAG}",
+                        "STAGING__kn-workflow-darwin-amd64-${params.TAG}",
                         "application/octet-stream",
                         "${pipelineVars.kieToolsBotGithubTokenCredentialsID}"
                     )
@@ -852,6 +869,17 @@ pipeline {
                         "${env.DASHBUILDER__viewerImageBuildTags}",
                         "${pipelineVars.quayPushCredentialsId}"
                     )
+                }
+            }
+        }
+
+        stage('Move artifacts') {
+            steps {
+                script {
+                    sh """#!/bin/bash -el
+                    mkdir ${pipelineVars.defaultArtifactsTempDir}
+                    mv kie-tools/packages/serverless-workflow-vscode-extension/dist/serverless_workflow_vscode_extension_${env.VERSION}.vsix ${pipelineVars.defaultArtifactsTempDir}
+                    """.trim()
                 }
             }
         }
