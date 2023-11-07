@@ -1,0 +1,418 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+@Library('kie-tools-pipeline-lib')_
+
+pipeline {
+    agent {
+        docker {
+            image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
+            args '--shm-size=2g --privileged --group-add docker'
+        }
+    }
+
+    options {
+        timeout(time: 240, unit: 'MINUTES')
+    }
+
+    parameters {
+        booleanParam(description: 'Dry run', name: 'DRY_RUN', defaultValue: true)
+        string(description: 'Base Ref', name: 'BASE_REF')
+        string(description: 'Tag', name: 'TAG', defaultValue: '0.0.0')
+        string(description: 'Upload asset url', name: 'DOWNLOAD_ASSET_URL', defaultValue: '')
+        string(description: 'Runners', name: 'RUNNERS', defaultValue: '{"dmn_dev_deployment_base_image":"false","kie_sandbox_image":"false","kie_sandbox_extended_services_image":"false","cors_proxy_image":"false","online_editor":"false","chrome_extensions":"false","vscode_extensions_dev":"false","vscode_extensions_prod":"false","npm_packages":"false","standalone_editors_cdn":"false","extended_services":"false","serverless_logic_web_tools":"false","serverless_logic_web_tools_swf_builder_image":"false","serverless_logic_web_tools_base_builder_image":"false","serverless_logic_web_tools_swf_dev_mode_image":"false","dashbuilder_viewer_image":"false","kn_plugin_workflow":"false"}')
+    }
+
+    environment {
+        KIE_TOOLS_BUILD__runLinters = 'false'
+        KIE_TOOLS_BUILD__runTests = 'false'
+        KIE_TOOLS_BUILD__runEndToEndTests = 'false'
+        KIE_TOOLS_BUILD__buildContainerImages = 'true'
+
+        OPENSHIFT_NAMESPACE = 'kie-sandbox'
+        OPENSHIFT_PART_OF = 'kie-sandbox-app'
+
+        DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT = 'SKIPPED'
+        KIE_SANDBOX_EXTENDED_SERVICES_IMAGE_JOB_RESULT = 'SKIPPED'
+        CORS_PROXY_IMAGE_JOB_RESULT = 'SKIPPED'
+        KIE_SANDBOX_IMAGE_JOB_RESULT = 'SKIPPED'
+        ONLINE_EDITOR_JOB_RESULT = 'SKIPPED'
+        CHROME_EXTENSIONS_JOB_RESULT = 'SKIPPED'
+        EXTENDED_SERVICES_JOB_RESULT = 'SKIPPED'
+    }
+
+    stages {
+        stage('Set Runners') {
+            steps {
+                script {
+                    runners = readJSON text: env.RUNNERS
+                    env.DMN_DEV_DEPLOYMENT_BASE_IMAGE = runners.dmn_dev_deployment_base_image
+                    env.KIE_SANDBOX_IMAGE = runners.kie_sandbox_image
+                    env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE = runners.kie_sandbox_extended_services_image
+                    env.CORS_PROXY_IMAGE = runners.cors_proxy_image
+                    env.ONLINE_EDITOR = runners.online_editor
+                    env.CHROME_EXTENSIONS = runners.chrome_extensions
+                    env.VSCODE_EXTENSIONS_DEV = runners.vscode_extensions_dev
+                    env.VSCODE_EXTENSIONS_PROD = runners.vscode_extensions_prod
+                    env.NPM_PACKAGES = runners.npm_packages
+                    env.STANDALONE_EDITORS_CDN = runners.standalone_editors_cdn
+                    env.EXTENDED_SERVICES = runners.extended_services
+                    env.SERVERLESS_LOGIC_WEB_TOOLS = runners.serverless_logic_web_tools
+                    env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE = runners.serverless_logic_web_tools_swf_builder_image
+                    env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE = runners.serverless_logic_web_tools_base_builder_image
+                    env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE = runners.serverless_logic_web_tools_swf_dev_mode_image
+                    env.DASHBUILDER_VIEWER_IMAGE = runners.dashbuilder_viewer_image
+                    env.KN_PLUGIN_WORKFLOW = runners.kn_plugin_workflow
+                }
+            }
+        }
+
+        stage('Print Runners') {
+            steps {
+                sh """
+                echo "dmn_dev_deployment_base_image: ${env.DMN_DEV_DEPLOYMENT_BASE_IMAGE}"
+                echo "kie_sandbox_image: ${env.KIE_SANDBOX_IMAGE}"
+                echo "kie_sandbox_extended_services_image: ${env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE}"
+                echo "cors_proxy_image: ${env.CORS_PROXY_IMAGE}"
+                echo "online_editor: ${env.ONLINE_EDITOR}"
+                echo "chrome_extensions: ${env.CHROME_EXTENSIONS}"
+                echo "vscode_extensions_dev: ${env.VSCODE_EXTENSIONS_DEV}"
+                echo "vscode_extensions_prod: ${env.VSCODE_EXTENSIONS_PROD}"
+                echo "npm_packages: ${env.NPM_PACKAGES}"
+                echo "standalone_editors_cdn: ${env.STANDALONE_EDITORS_CDN}"
+                echo "extended_services: ${env.EXTENDED_SERVICES}"
+                echo "serverless_logic_web_tools: ${env.SERVERLESS_LOGIC_WEB_TOOLS}"
+                echo "serverless_logic_web_tools_swf_builder_image: ${env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE}"
+                echo "serverless_logic_web_tools_base_builder_image: ${env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE}"
+                echo "serverless_logic_web_tools_swf_dev_mode_image: ${env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE}"
+                echo "dashbuilder_viewer_image: ${env.DASHBUILDER_VIEWER_IMAGE}"
+                echo "kn_plugin_workflow: ${env.KN_PLUGIN_WORKFLOW}"
+                """.trim()
+            }
+        }
+
+        stage('dmn_dev_deployment_base_image') {
+            when {
+                expression { env.DMN_DEV_DEPLOYMENT_BASE_IMAGE == 'true' }
+            }
+            steps {
+                env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT = build(
+                    wait: true,
+                    job: 'dmn-dev-deployment',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}"),
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('kie_sandbox_extended_services_image') {
+            when {
+                expression { env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE == 'true' }
+            }
+            steps {
+                env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE_JOB_RESULT = build(
+                    wait: true,
+                    job: 'kie-sandbox-extended-services',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}"),
+                    ]
+                ).getResult()
+
+                env.KIE_SANDBOX_EXTENDED_SERVICES_URL = openShiftUtils.getAppRoute('kie-sandbox-extended-services', "${pipelineVars.openshiftCredentialsId}")
+            }
+        }
+
+        stage('cors_proxy_image') {
+            when {
+                expression { env.CORS_PROXY_IMAGE == 'true' }
+            }
+            steps {
+                env.CORS_PROXY_IMAGE_JOB_RESULT = build(
+                    wait: true,
+                    job: 'cors-proxy',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}")
+                    ]
+                ).getResult()
+
+                env.KIE_SANDBOX_CORS_PROXY_URL = openShiftUtils.getAppRoute('cors-proxy', "${pipelineVars.openshiftCredentialsId}")
+            }
+        }
+
+        stage('kie_sandbox_image') {
+            when {
+                expression { env.KIE_SANDBOX_IMAGE == 'true' }
+            }
+            steps {
+                env.KIE_SANDBOX_IMAGE_JOB_RESULT = build(
+                    wait: true,
+                    job: 'kie-sandbox',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}"),
+                        string(name: 'KIE_SANDBOX_EXTENDED_SERVICES_URL', value: "${env.KIE_SANDBOX_EXTENDED_SERVICES_URL}"),
+                        string(name: 'KIE_SANDBOX_CORS_PROXY_URL', value: "${env.KIE_SANDBOX_CORS_PROXY_URL}"),
+                    ]
+                ).getResult()
+
+                env.KIE_SANDBOX_URL = openShiftUtils.getAppRoute('kie-sandbox', "${pipelineVars.openshiftCredentialsId}")
+            }
+        }
+
+        // TODO: Verify Windows + MacOS builds
+        stage('extendend_services') {
+            when {
+                expression { env.EXTENDED_SERVICES == 'true' }
+            }
+            steps {
+                env.EXTENDED_SERVICES_JOB_RESULT = build(
+                    wait: true,
+                    job: 'extended-services',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}"),
+                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('online_editor') {
+            when {
+                expression { env.ONLINE_EDITOR == 'true' && (env.EXTENDED_SERVICES_JOB_RESULT == 'SUCCESS' || env.EXTENDED_SERVICES_JOB_RESULT == 'SKIPPED') && (env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SUCCESS' || env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT != 'SKIPPED') }
+            }
+            steps {
+                env.ONLINE_EDITOR_JOB_RESULT = build(
+                    wait: true,
+                    job: 'online-editor',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('chrome_extensions') {
+            when {
+                expression { env.CHROME_EXTENSIONS == 'true' && (env.EXTENDED_SERVICES_JOB_RESULT == 'SUCCESS' || env.EXTENDED_SERVICES_JOB_RESULT == 'SKIPPED') && (env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SUCCESS' || env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SKIPPED') && (env.ONLINE_EDITOR_JOB_RESULT == 'SUCCESS' || env.ONLINE_EDITOR_JOB_RESULT == 'SKIPPED') }
+            }
+            steps {
+                env.CHROME_EXTENSIONS_JOB_RESULT = build(
+                    wait: true,
+                    job: 'chrome-extensions',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}"),
+                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('vscode_extensions_dev') {
+            when {
+                expression { env.VSCODE_EXTENSIONS_DEV == 'true' }
+            }
+            steps {
+                env.VSCODE_EXTENSIONS_DEV_JOB_RESULT = build(
+                    wait: true,
+                    job: 'vscode-extensions-dev',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}"),
+                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('vscode_extensions_prod') {
+            when {
+                expression { env.VSCODE_EXTENSIONS_PROD == 'true' }
+            }
+            steps {
+                env.CHROME_EXTENSIONS_JOB_RESULT = build(
+                    wait: true,
+                    job: 'vscode-extensions-prod',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}"),
+                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('npm_packages') {
+            when {
+                expression { env.NPM_PACKAGES == 'true' }
+            }
+            steps {
+                env.NPM_PACKAGES_JOB_RESULT = build(
+                    wait: true,
+                    job: 'npm-packages',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('standalone_editors_cdn') {
+            when {
+                expression { env.STANDALONE_EDITORS_CDN == 'true' && (env.EXTENDED_SERVICES_JOB_RESULT == 'SUCCESS' || env.EXTENDED_SERVICES_JOB_RESULT == 'SKIPPED') && (env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SUCCESS' || env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SKIPPED') && (env.ONLINE_EDITOR_JOB_RESULT == 'SUCCESS' || env.ONLINE_EDITOR_JOB_RESULT == 'SKIPPED') && (env.CHROME_EXTENSIONS_JOB_RESULT == 'SUCCESS' || env.CHROME_EXTENSIONS_JOB_RESULT == 'SKIPPED') }
+            }
+            steps {
+                env.STANDALONE_EDITORS_CDN_JOB_RESULT = build(
+                    wait: true,
+                    job: 'standalone-editors-cdn',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('kn_plugin_workflow') {
+            when {
+                expression { env.KN_PLUGIN_WORKFLOW == 'true' }
+            }
+            steps {
+                env.KN_PLUGIN_WORKFLOW_JOB_RESULT = build(
+                    wait: true,
+                    job: 'kn-plugin-workflow',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}"),
+                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('serverless_logic_web_tools_swf_builder_image') {
+            when {
+                expression { env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE == 'true' }
+            }
+            steps {
+                env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE_JOB_RESULT = build(
+                    wait: true,
+                    job: 'serverless-logic-web-tools-swf-builder-image',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('serverless_logic_web_tools_swf_dev_mode_image') {
+            when {
+                expression { env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE == 'true' }
+            }
+            steps {
+                env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE_JOB_RESULT = build(
+                    wait: true,
+                    job: 'serverless-logic-web-tools-swf-dev-mode-image',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('serverless_logic_web_tools_base_builder_image') {
+            when {
+                expression { env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE == 'true' }
+            }
+            steps {
+                env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE_JOB_RESULT = build(
+                    wait: true,
+                    job: 'serverless-logic-web-tools-base-builder-image',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('dashbuilder_viewer_image') {
+            when {
+                expression { env.DASHBUILDER_VIEWER_IMAGE == 'true' }
+            }
+            steps {
+                env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT = build(
+                    wait: true,
+                    job: 'dashbuilder-viewer-image',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}")
+                    ]
+                ).getResult()
+            }
+        }
+
+        stage('serverless_logic_web_tools') {
+            when {
+                expression { env.DASHBUILDER_VIEWER_IMAGE == 'true' }
+            }
+            steps {
+                env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT = build(
+                    wait: true,
+                    job: 'serverless-logic-web-tools',
+                    parameters: [
+                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                        string(name: 'TAG', value: "${params.TAG}")
+                    ]
+                ).getResult()
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean workspace
+            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+        }
+    }
+}
