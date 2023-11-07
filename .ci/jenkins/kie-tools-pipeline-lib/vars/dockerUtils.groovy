@@ -18,10 +18,13 @@
 /**
 * Push an image to a given registry
 */
-def pushImageToRegistry(String registry, String account, String image, String tag, String credentialsId) {
+def pushImageToRegistry(String registry, String image, String tags, String credentialsId) {
     withCredentials([usernamePassword(credentialsId: credentialsId, usernameVariable: 'REGISTRY_USER', passwordVariable: 'REGISTRY_PWD')]) {
         sh "set +x && docker login -u $REGISTRY_USER -p $REGISTRY_PWD $registry"
-        sh "docker push $registry/$image:$tag"
-        sh "docker logout"
+        tagList = tags.split(' ')
+        for (tag in tagList) {
+            sh "docker push $registry/$image:$tag"
+        }
+        sh 'docker logout'
     }
 }
