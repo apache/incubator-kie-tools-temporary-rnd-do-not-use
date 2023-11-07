@@ -17,10 +17,8 @@
 
 /**
 * Create or update an existing application in a Openshift cluster
-*
-* @return String route to the application
 */
-def createOrUpdateApp(String appName, String imageTag, String imageUrl, String partOf, String deploymentIcon, String credentialsId, String deploymentEnvVarsPath="./deployment.env") {
+def createOrUpdateApp(String appName, String imageTag, String imageUrl, String partOf, String deploymentIcon, String credentialsId, String deploymentEnvVarsPath='./deployment.env') {
     withCredentials([usernamePassword(credentialsId: credentialsId, usernameVariable: 'OS_SERVER', passwordVariable: 'OS_TOKEN')]) {
         sh 'set +x && oc login --token=$OS_TOKEN --server=$OS_SERVER --insecure-skip-tls-verify'
 
@@ -57,9 +55,8 @@ def createOrUpdateApp(String appName, String imageTag, String imageUrl, String p
           cat ${deploymentEnvVarsPath} | oc set env deploy/${appName} -
         fi
         """.trim()
+        sh 'oc logout'
     }
-
-    return getAppRoute(appName, credentialsId)
 }
 
 /**
