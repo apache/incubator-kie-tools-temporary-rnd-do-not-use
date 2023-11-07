@@ -19,28 +19,28 @@
 * Start Docker in Docker (DinD)
 */
 def startDockerInDocker() {
-    sh """#!/bin/bash -el
+    sh '''#!/bin/bash -el
     sudo entrypoint.sh
     sudo service dbus start
-    """.trim()
+    '''.trim()
 }
 
 /**
 * Start Xvfb X server required for KIE-Tools E2E tests
 */
 def startXvfb() {
-    sh """#!/bin/bash -el
+    sh '''#!/bin/bash -el
     Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-    """.trim()
+    '''.trim()
 }
 
 /**
 * Start Fluxbox window manager required for KIE-Tools E2E tests
 */
 def startFluxbox() {
-    sh """#!/bin/bash -el
+    sh '''#!/bin/bash -el
     fluxbox -display :99 > /dev/null 2>&1 &
-    """.trim()
+    '''.trim()
 }
 
 /**
@@ -57,7 +57,7 @@ def setupPnpm() {
     """.trim()
 }
 
-def bootstrapPnpm(String filters = "") {
+def bootstrapPnpm(String filters = '') {
     sh """#!/bin/bash -el
     pnpm bootstrap ${filters}
     """.trim()
@@ -83,5 +83,5 @@ def buildDateTime() {
 * @return String the Apache Jenkins agent nodes with higher capacity (builds22 to builds40)
 **/
 def apacheAgentLabels() {
-    return (22..40).collect{"builds$it"}.join(" || ")
+    return (22..40).collect{"builds$it"}.join(' || ')
 }
