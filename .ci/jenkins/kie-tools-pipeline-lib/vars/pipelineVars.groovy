@@ -7,7 +7,9 @@ class pipelineVars implements Serializable {
     String quayPushCredentialsId = 'quay-io-kie-tools-token'
     String openshiftCredentialsId = 'openshift-kie-tools-token'
     String kieToolsBotGithubCredentialsId = 'kie-tools-bot-gh'
-    String kieToolsBotGithubTokenCredentialsID = 'kie-tools-bot-gh-token'
+    String kieToolsBotGithubTokenCredentialsId = 'kie-tools-bot-gh-token'
+    String chromeStoreCredentialsId = 'kie-tools-chome-store'
+    String chromeStoreRefreshTokenCredentialsId = 'kie-tools-chome-store-refresh-token'
 
     String defaultArtifactsTempDir = 'artifacts-tmp'
 
