@@ -81,6 +81,13 @@ def uploadReleaseAsset(String uploadUrl, String assetPath, String assetName, Str
 }
 
 /**
+* Parse an release upload asset url to remove unecessary strings
+*/
+def parseReleaseAssetUploadUrl(String uploadUrl) {
+    return uploadUrl.replace('{?name,label}', '')
+}
+
+/**
 * Checkout a github repository using GitSCM class
 */
 def checkoutRepo(String url, String branch, String credentialsId) {
