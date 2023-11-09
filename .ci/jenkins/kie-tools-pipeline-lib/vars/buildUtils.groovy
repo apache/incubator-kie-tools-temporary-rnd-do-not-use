@@ -57,9 +57,30 @@ def setupPnpm() {
     """.trim()
 }
 
-def bootstrapPnpm(String filters = '') {
+/**
+* PNPM Bootsrap
+*/
+def pnpmBootstrap(String filters = '') {
     sh """#!/bin/bash -el
     pnpm bootstrap ${filters}
+    """.trim()
+}
+
+/**
+* PNPM build all packages
+*/
+def pnpmBuildFull(Integer workspaceConcurrency = 1) {
+    sh """#!/bin/bash -el
+    pnpm -r --workspace-concurrency=${workspaceConcurrency} build:prod
+    """.trim()
+}
+
+/**
+* PNPM build a set of packages
+*/
+def pnpmBuild(String filters, Integer workspaceConcurrency = 1) {
+    sh """#!/bin/bash -el
+    pnpm ${filters} --workspace-concurrency=${workspaceConcurrency} build:prod
     """.trim()
 }
 
