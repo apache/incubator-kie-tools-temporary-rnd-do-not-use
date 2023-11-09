@@ -53,6 +53,10 @@ pipeline {
         ONLINE_EDITOR_JOB_RESULT = 'SKIPPED'
         CHROME_EXTENSIONS_JOB_RESULT = 'SKIPPED'
         EXTENDED_SERVICES_JOB_RESULT = 'SKIPPED'
+        SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE_JOB_RESULT = 'SKIPPED'
+        SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE_JOB_RESULT = 'SKIPPED'
+        SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE_JOB_RESULT = 'SKIPPED'
+        DASHBUILDER_VIEWER_IMAGE_JOB_RESULT = 'SKIPPED'
     }
 
     stages {
@@ -105,7 +109,7 @@ pipeline {
             }
         }
 
-        stage('dmn_dev_deployment_base_image') {
+        stage('DMN Dev Deployment Base Image') {
             when {
                 expression { env.DMN_DEV_DEPLOYMENT_BASE_IMAGE == 'true' }
             }
@@ -122,7 +126,7 @@ pipeline {
             }
         }
 
-        stage('kie_sandbox_extended_services_image') {
+        stage('KIE Sandbox Extended Services Image') {
             when {
                 expression { env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE == 'true' }
             }
@@ -141,7 +145,7 @@ pipeline {
             }
         }
 
-        stage('cors_proxy_image') {
+        stage('CORS Proxy Image') {
             when {
                 expression { env.CORS_PROXY_IMAGE == 'true' }
             }
@@ -160,7 +164,7 @@ pipeline {
             }
         }
 
-        stage('kie_sandbox_image') {
+        stage('KIE Sandbox Image') {
             when {
                 expression { env.KIE_SANDBOX_IMAGE == 'true' }
             }
@@ -182,7 +186,7 @@ pipeline {
         }
 
         // TODO: Verify Windows + MacOS builds
-        stage('extendend_services') {
+        stage('Extendend Services') {
             when {
                 expression { env.EXTENDED_SERVICES == 'true' }
             }
@@ -200,7 +204,7 @@ pipeline {
             }
         }
 
-        stage('online_editor') {
+        stage('Online Editor') {
             when {
                 expression { env.ONLINE_EDITOR == 'true' && (env.EXTENDED_SERVICES_JOB_RESULT == 'SUCCESS' || env.EXTENDED_SERVICES_JOB_RESULT == 'SKIPPED') && (env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SUCCESS' || env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT != 'SKIPPED') }
             }
@@ -217,7 +221,7 @@ pipeline {
             }
         }
 
-        stage('chrome_extensions') {
+        stage('Chrome Extensions') {
             when {
                 expression { env.CHROME_EXTENSIONS == 'true' && (env.EXTENDED_SERVICES_JOB_RESULT == 'SUCCESS' || env.EXTENDED_SERVICES_JOB_RESULT == 'SKIPPED') && (env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SUCCESS' || env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SKIPPED') && (env.ONLINE_EDITOR_JOB_RESULT == 'SUCCESS' || env.ONLINE_EDITOR_JOB_RESULT == 'SKIPPED') }
             }
@@ -235,7 +239,7 @@ pipeline {
             }
         }
 
-        stage('vscode_extensions_dev') {
+        stage('VSCode Extensions Dev') {
             when {
                 expression { env.VSCODE_EXTENSIONS_DEV == 'true' }
             }
@@ -253,7 +257,7 @@ pipeline {
             }
         }
 
-        stage('vscode_extensions_prod') {
+        stage('VSCode Extensions Prod') {
             when {
                 expression { env.VSCODE_EXTENSIONS_PROD == 'true' }
             }
@@ -271,7 +275,7 @@ pipeline {
             }
         }
 
-        stage('npm_packages') {
+        stage('NPM Packages') {
             when {
                 expression { env.NPM_PACKAGES == 'true' }
             }
@@ -287,8 +291,8 @@ pipeline {
                 ).getResult()
             }
         }
-
-        stage('standalone_editors_cdn') {
+ß
+        stage('Standalone Editors CDN') {
             when {
                 expression { env.STANDALONE_EDITORS_CDN == 'true' && (env.EXTENDED_SERVICES_JOB_RESULT == 'SUCCESS' || env.EXTENDED_SERVICES_JOB_RESULT == 'SKIPPED') && (env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SUCCESS' || env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SKIPPED') && (env.ONLINE_EDITOR_JOB_RESULT == 'SUCCESS' || env.ONLINE_EDITOR_JOB_RESULT == 'SKIPPED') && (env.CHROME_EXTENSIONS_JOB_RESULT == 'SUCCESS' || env.CHROME_EXTENSIONS_JOB_RESULT == 'SKIPPED') }
             }
@@ -305,7 +309,7 @@ pipeline {
             }
         }
 
-        stage('kn_plugin_workflow') {
+        stage('Kn Plugin Workflow') {
             when {
                 expression { env.KN_PLUGIN_WORKFLOW == 'true' }
             }
@@ -323,7 +327,7 @@ pipeline {
             }
         }
 
-        stage('serverless_logic_web_tools_swf_builder_image') {
+        stage('Serverless Logic Web Tools Swf Builder Image') {
             when {
                 expression { env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE == 'true' }
             }
@@ -340,7 +344,7 @@ pipeline {
             }
         }
 
-        stage('serverless_logic_web_tools_swf_dev_mode_image') {
+        stage('Serverless Logic Web Tools Swf Dev Mode Image') {
             when {
                 expression { env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE == 'true' }
             }
@@ -357,7 +361,7 @@ pipeline {
             }
         }
 
-        stage('serverless_logic_web_tools_base_builder_image') {
+        stage('Serverless Logic Web Tools Base Builder Image') {
             when {
                 expression { env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE == 'true' }
             }
@@ -374,7 +378,7 @@ pipeline {
             }
         }
 
-        stage('dashbuilder_viewer_image') {
+        stage('Dashbuilder Viewer Image') {
             when {
                 expression { env.DASHBUILDER_VIEWER_IMAGE == 'true' }
             }
@@ -391,9 +395,9 @@ pipeline {
             }
         }
 
-        stage('serverless_logic_web_tools') {
+        stage('Serverless Logic Web Tools') {
             when {
-                expression { env.DASHBUILDER_VIEWER_IMAGE == 'true' }
+                expression { env.SERVERLESS_LOGIC_WEB_TOOLS == 'true' && (env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE_JOB_RESULT == 'SUCCESS' || env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE_JOB_RESULT == 'SKIPPED') && (env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE_JOB_RESULT == 'SUCCESS' || env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE_JOB_RESULT == 'SKIPPED') && (env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE_JOB_RESULT == 'SUCCESS' || env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE_JOB_RESULT == 'SKIPPED') && (env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT == 'SUCCESS' || env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT == 'SKIPPED') }
             }
             steps {
                 env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT = build(
@@ -411,7 +415,6 @@ pipeline {
 
     post {
         always {
-            // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }
