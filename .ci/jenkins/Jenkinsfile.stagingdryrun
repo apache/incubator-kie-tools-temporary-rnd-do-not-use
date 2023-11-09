@@ -32,7 +32,7 @@ pipeline {
             steps {
                 build job: 'kie-tools-ci-staging-build', parameters: [
                     booleanParam(name: 'DRY_RUN', value: true),
-                    string(name: 'BASE_REF', value: "${GIT_BRANCH}")
+                    string(name: 'BASE_REF', value: 'main')
                 ]
             }
         }
