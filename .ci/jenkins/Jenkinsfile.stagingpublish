@@ -81,8 +81,7 @@ pipeline {
 
                     env.RELEASE_ID = respJSON.id
                     env.RELEASE_HTML_URL = respJSON.html_url
-                    upload_url = respJSON.upload_url
-                    env.RELEASE_UPLOAD_ASSET_URL = upload_url.replace('{?name,label}', '')
+                    env.RELEASE_UPLOAD_ASSET_URL = githubUtils.parseReleaseAssetUploadUrl(respJSON.upload_url)
                 }
             }
         }
