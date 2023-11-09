@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,29 +17,24 @@
  * under the License.
  */
 
-export enum SymbolType {
-  /**
-   * Symbol not recognized.
-   */
-  Unknown,
+package org.kie.tools;
 
-  /**
-   * A symbol defined in a Decision or Input node.
-   */
-  GlobalVariable,
+import javax.inject.Inject;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
-  /**
-   * Decision Service and Business Knowledge Model are invocable.
-   */
-  Invocable,
+@Path("/ping")
+public class PingResource {
 
-  /**
-   * Local variables.
-   */
-  LocalVariable,
+    @Inject
+    PingResponse pingResponse;
 
-  /**
-   * Parameters of functions.
-   */
-  Parameter,
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getPingResponse() {
+        return Response.ok(pingResponse).build();
+    }
 }
