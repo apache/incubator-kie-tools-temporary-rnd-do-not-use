@@ -38,6 +38,26 @@ def createRelease(String repository, String name, String tag, String commit, Boo
 }
 
 /**
+* Fetch a Github Release by tag
+*
+* @return String with the release information
+*/
+def fetchRelease(String repository, String tag, String credentialsId) {
+    withCredentials([string(credentialsId: credentialsId, variable: 'GITHUB_TOKEN')]) {
+        response = sh returnStdout: true, script: """
+        set +x
+        curl -L \
+        -H "Accept: application/vnd.github+json" \
+        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        https://api.github.com/repos/${repository}/releases/tags/${tag}
+        """.trim()
+
+        return response
+    }
+}
+
+/**
 * Upload an asset to a GitHub release
 *
 * @return String with the release asset information
