@@ -26,7 +26,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 60, unit: 'MINUTES')
+        timeout(time: 120, unit: 'MINUTES')
     }
 
     parameters {
@@ -80,19 +80,34 @@ pipeline {
 
         stage('PNPM Bootstrap') {
             steps {
-                buildUtils.bootstrapPnpm('-F @kie-tools/kn-plugin-workflow...')
+                sh '''#!/bin/bash -el
+                pnpm bootstrap -F bpmn-vscode-extension... \
+                -F dmn-vscode-extension... \
+                -F pmml-vscode-extension... \
+                -F vscode-extension-kogito-bundle... \
+                -F swf-vscode-extension... \
+                -F vscode-extension-kie-ba-bundle... \
+                -F vscode-extension-dashbuilder-editor...
+                '''.trim()
             }
         }
 
         stage('Build') {
             steps {
                 sh '''#!/bin/bash -el
-                pnpm -F @kie-tools/kn-plugin-workflow... build:prod
+                pnpm -F bpmn-vscode-extension... \
+                -F dmn-vscode-extension... \
+                -F pmml-vscode-extension... \
+                -F vscode-extension-kogito-bundle... \
+                -F swf-vscode-extension... \
+                -F vscode-extension-kie-ba-bundle... \
+                -F vscode-extension-dashbuilder-editor... \
+                build:prod
                 '''.trim()
             }
         }
 
-        stage('Upload Knative CLI Workflow Plugin for Linux') {
+        stage('Upload VS Code Extension - BPMN Editor (prod)') {
             when {
                 expression { !params.DRY_RUN }
             }
@@ -100,16 +115,16 @@ pipeline {
                 script {
                     githubUtils.uploadReleaseAsset(
                         "${params.UPLOAD_ASSET_URL}",
-                        'packages/kn-plugin-workflow/dist/kn-workflow-linux-amd64',
-                        "kn-workflow-linux-amd64-${params.TAG}",
-                        'application/octet-stream',
+                        "packages/bpmn-vscode-extension/dist/bpmn_vscode_extension_${params.TAG}.vsix",
+                        "bpmn_vscode_extension_${params.TAG}.vsix",
+                        'application/zip',
                         "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
                     )
                 }
             }
         }
 
-        stage('Upload Knative CLI Workflow Plugin for macOS') {
+        stage('Upload VS Code Extension - DMN Editor (prod)') {
             when {
                 expression { !params.DRY_RUN }
             }
@@ -117,16 +132,16 @@ pipeline {
                 script {
                     githubUtils.uploadReleaseAsset(
                         "${params.UPLOAD_ASSET_URL}",
-                        'packages/kn-plugin-workflow/dist/kn-workflow-darwin-amd64',
-                        "kn-workflow-darwin-amd64-${params.TAG}",
-                        'application/octet-stream',
+                        "packages/dmn-vscode-extension/dist/dmn_vscode_extension_${params.TAG}.vsix",
+                        "dmn_vscode_extension_${params.TAG}.vsix",
+                        'application/zip',
                         "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
                     )
                 }
             }
         }
 
-        stage('Upload Knative CLI Workflow Plugin for macOS M1') {
+        stage('Upload VS Code Extension - PMML Editor (prod)') {
             when {
                 expression { !params.DRY_RUN }
             }
@@ -134,16 +149,16 @@ pipeline {
                 script {
                     githubUtils.uploadReleaseAsset(
                         "${params.UPLOAD_ASSET_URL}",
-                        'packages/kn-plugin-workflow/dist/kn-workflow-darwin-arm64',
-                        "kn-workflow-darwin-arm64-${params.TAG}",
-                        'application/octet-stream',
+                        "packages/pmml-vscode-extension/dist/pmml_vscode_extension_${params.TAG}.vsix",
+                        "pmml_vscode_extension_${params.TAG}.vsix",
+                        'application/zip',
                         "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
                     )
                 }
             }
         }
 
-        stage('Upload Knative CLI Workflow Plugin for Windows') {
+        stage('Upload VS Code Extension - Kogito Bundle (prod)') {
             when {
                 expression { !params.DRY_RUN }
             }
@@ -151,9 +166,60 @@ pipeline {
                 script {
                     githubUtils.uploadReleaseAsset(
                         "${params.UPLOAD_ASSET_URL}",
-                        'packages/kn-plugin-workflow/dist/kn-workflow-windows-amd64.exe',
-                        "kn-workflow-windows-amd64-${params.TAG}.exe",
-                        'application/octet-stream',
+                        "packages/vscode-extension-kogito-bundle/dist/vscode_extension_kogito_bundle_${params.TAG}.vsix",
+                        "vscode_extension_kogito_bundle_${params.TAG}.vsix",
+                        'application/zip',
+                        "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
+                    )
+                }
+            }
+        }
+
+        stage('Upload VS Code Extension - KIE Business Automation Bundle (prod)') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                script {
+                    githubUtils.uploadReleaseAsset(
+                        "${params.UPLOAD_ASSET_URL}",
+                        "packages/vscode-extension-kie-ba-bundle/dist/vscode_extension_kie_ba_bundle_${params.TAG}.vsix",
+                        "vscode_extension_kie_ba_bundle_${params.TAG}.vsix",
+                        'application/zip',
+                        "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
+                    )
+                }
+            }
+        }
+
+        stage('Upload VS Code Extension - Serverless Workflow Editor - KIE (prod)') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                script {
+                    githubUtils.uploadReleaseAsset(
+                        "${params.UPLOAD_ASSET_URL}",
+                        "packages/serverless-workflow-vscode-extension/dist/serverless_workflow_vscode_extension_${params.TAG}.vsix",
+                        "serverless_workflow_vscode_extension_${params.TAG}.vsix",
+                        'application/zip',
+                        "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
+                    )
+                }
+            }
+        }
+
+        stage('Upload VS Code Extension - Dashbuilder Editor (prod)') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                script {
+                    githubUtils.uploadReleaseAsset(
+                        "${params.UPLOAD_ASSET_URL}",
+                        "packages/vscode-extension-dashbuilder-editor/dist/vscode_extension_dashbuilder_editor_${params.TAG}.vsix",
+                        "vscode_extension_dashbuilder_editor_${params.TAG}.vsix",
+                        'application/zip',
                         "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
                     )
                 }

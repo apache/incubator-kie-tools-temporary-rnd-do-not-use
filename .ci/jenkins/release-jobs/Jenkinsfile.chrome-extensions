@@ -49,6 +49,8 @@ pipeline {
         SWF_CHROME_EXTENSION__routerTargetOrigin = 'https://kiegroup.github.io'
         SWF_CHROME_EXTENSION__routerRelativePath = "kogito-online/swf-chrome-extension/${params.TAG}"
         SWF_CHROME_EXTENSION__manifestFile = 'manifest.prod.json'
+
+        PNPM_FILTER_STRING = '-F chrome-extension-pack-kogito-kie-editors... -F chrome-extension-serverless-workflow-editor...'
     }
 
     stages {
@@ -107,7 +109,9 @@ pipeline {
         stage('PNPM Bootstrap') {
             steps {
                 dir('kie-tools') {
-                    buildUtils.bootstrapPnpm('-F chrome-extension-pack-kogito-kie-editors... -F chrome-extension-serverless-workflow-editor...')
+                    script {
+                        buildUtils.pnpmBootstrap("${env.PNPM_FILTER_STRING}")
+                    }
                 }
             }
         }
@@ -115,9 +119,9 @@ pipeline {
         stage('Build') {
             steps {
                 dir('kie-tools') {
-                    sh '''#!/bin/bash -el
-                    pnpm -F chrome-extension-pack-kogito-kie-editors... -F chrome-extension-serverless-workflow-editor... build:prod
-                    '''.trim()
+                    script {
+                        buildUtils.pnpmBuild("${env.PNPM_FILTER_STRING}")
+                    }
                 }
             }
         }
@@ -146,8 +150,8 @@ pipeline {
             steps {
                 dir('kogito-online') {
                     script {
-                        editorsDir = "./editors/${params.TAG}"
-                        chromeExtensionDir = "./chrome-extension/${params.TAG}"
+                        editorsDir = "editors/${params.TAG}"
+                        chromeExtensionDir = "chrome-extension/${params.TAG}"
 
                         sh """#!/bin/bash -el
                         git config --global user.email 'kietoolsbot@gmail.com'
@@ -196,7 +200,9 @@ pipeline {
                 expression { !params.DRY_RUN }
             }
             steps {
-                sh "[ \"${env.CHROME_EXTESION_KIE_EDITORS_UPLOAD_STATUS}\" == 'SUCCESS' ]"
+                sh """#!/bin/bash -el
+                [[ "${env.CHROME_EXTESION_KIE_EDITORS_UPLOAD_STATUS}" == "SUCCESS" ]]"
+                """.trim()
             }
         }
 
@@ -220,7 +226,9 @@ pipeline {
                 expression { !params.DRY_RUN }
             }
             steps {
-                sh "[ \"${env.CHROME_EXTESION_KIE_EDITORS_PUBLISH_STATUS}\" == 'OK' ] || [ \"${env.CHROME_EXTESION_KIE_EDITORS_PUBLISH_STATUS}\" == 'PUBLISHED_WITH_FRICTION_WARNING' ]"
+                sh """#!/bin/bash -el
+                [[ "${env.CHROME_EXTESION_KIE_EDITORS_PUBLISH_STATUS}" == "OK" ]] || [[ "${env.CHROME_EXTESION_KIE_EDITORS_PUBLISH_STATUS}" == "PUBLISHED_WITH_FRICTION_WARNING" ]]
+                """.trim()
             }
         }
 
@@ -248,7 +256,7 @@ pipeline {
             steps {
                 dir('kogito-online') {
                     script {
-                        deploymentDir = "./swf-chrome-extension/${params.TAG}"
+                        deploymentDir = "swf-chrome-extension/${params.TAG}"
 
                         sh """#!/bin/bash -el
                         git config --global user.email 'kietoolsbot@gmail.com'
@@ -258,7 +266,7 @@ pipeline {
                         echo "Copy Chrome Extension resources"
                         rm -rf ${deploymentDir}
                         mkdir -p ${deploymentDir}
-                        cp -r kie-tools/packages/chrome-extension-serverless-workflow-editor/dist/{fonts,diagram,*-envelope.*,*.bundle.js,*.worker.js} ${deploymentDir}
+                        cp -r ../kie-tools/packages/chrome-extension-serverless-workflow-editor/dist/{fonts,diagram,*-envelope.*,*.bundle.js,*.worker.js} ${deploymentDir}
 
                         echo "Commit changes and push"
                         git add .
@@ -294,7 +302,9 @@ pipeline {
                 expression { !params.DRY_RUN }
             }
             steps {
-                sh "[ \"${env.CHROME_EXTESION_SERVERLESS_WORKFLOW_EDITOR_UPLOAD_STATUS}\" == 'SUCCESS' ]"
+                sh """#!/bin/bash -el
+                [[ "${env.CHROME_EXTESION_SERVERLESS_WORKFLOW_EDITOR_UPLOAD_STATUS}" == "SUCCESS" ]]
+                """.trim()
             }
         }
 
@@ -318,14 +328,15 @@ pipeline {
                 expression { !params.DRY_RUN }
             }
             steps {
-                sh "[ \"${env.CHROME_EXTESION_SERVERLESS_WORKFLOW_EDITOR_PUBLISH_STATUS}\" == 'OK' ] || [ \"${env.CHROME_EXTESION_SERVERLESS_WORKFLOW_EDITOR_PUBLISH_STATUS}\" == 'PUBLISHED_WITH_FRICTION_WARNING' ]"
+                sh """#!/bin/bash -el
+                [[ "${env.CHROME_EXTESION_SERVERLESS_WORKFLOW_EDITOR_PUBLISH_STATUS}" == "OK" ]] || [[ "${env.CHROME_EXTESION_SERVERLESS_WORKFLOW_EDITOR_PUBLISH_STATUS}" == "PUBLISHED_WITH_FRICTION_WARNING" ]]
+                """.trim()
             }
         }
     }
 
     post {
         always {
-            // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }

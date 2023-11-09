@@ -41,10 +41,12 @@ pipeline {
         KIE_TOOLS_BUILD__runEndToEndTests = 'false'
         KIE_TOOLS_BUILD__buildContainerImages = 'true'
 
-        SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageRegistry = 'quay.io'
-        SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageAccount = 'kie-tools'
-        SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageName = 'serverless-logic-web-tools-swf-builder-image'
-        SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageBuildTags = "latest ${params.TAG}"
+        SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageRegistry = 'quay.io'
+        SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageAccount = 'kie-tools'
+        SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageName = 'serverless-logic-web-tools-swf-dev-mode-image'
+        SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageBuildTags = "latest ${params.TAG}"
+
+        PNPM_FILTER_STRING = '-F @kie-tools/serverless-logic-web-tools-swf-dev-mode-image...'
     }
 
     stages {
@@ -89,7 +91,9 @@ pipeline {
         stage('PNPM Bootstrap') {
             steps {
                 dir('kie-tools') {
-                    buildUtils.bootstrapPnpm('-F @kie-tools/serverless-logic-web-tools-swf-builder-image...')
+                    script {
+                        buildUtils.pnpmBootstrap("${env.PNPM_FILTER_STRING}")
+                    }
                 }
             }
         }
@@ -97,23 +101,23 @@ pipeline {
         stage('Build') {
             steps {
                 dir('kie-tools') {
-                    sh '''#!/bin/bash -el
-                    pnpm -F @kie-tools/serverless-logic-web-tools-swf-builder-image... build:prod
-                    '''.trim()
+                    script {
+                        buildUtils.pnpmBuild("${env.PNPM_FILTER_STRING}")
+                    }
                 }
             }
         }
 
-        stage('Push serverless-logic-web-tools-swf-builder-image to quay.io') {
+        stage('Push serverless-logic-web-tools-swf-dev-mode-image to quay.io') {
             when {
                 expression { !params.DRY_RUN }
             }
             steps {
                 script {
                     dockerUtils.pushImageToRegistry(
-                        "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageRegistry}/${env.SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageAccount}",
-                        "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageName}",
-                        "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfBuilderImageBuildTags}",
+                        "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageRegistry}/${env.SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageAccount}",
+                        "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageName}",
+                        "${env.SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageBuildTags}",
                         "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
@@ -123,7 +127,6 @@ pipeline {
 
     post {
         always {
-            // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }

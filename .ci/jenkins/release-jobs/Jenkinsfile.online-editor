@@ -33,8 +33,6 @@ pipeline {
         booleanParam(description: 'Dry run', name: 'DRY_RUN', defaultValue: true)
         string(description: 'Tag', name: 'TAG', defaultValue: '0.0.0')
         string(description: 'Base Ref', name: 'BASE_REF')
-        string(description: 'Kie Sandbox Extendend Services Url', name: 'KIE_SANDBOX_EXTENDED_SERVICES_URL')
-        string(description: 'Kie Sandbox Cors Proxy Url', name: 'KIE_SANDBOX_CORS_PROXY_URL')
     }
 
     environment {
@@ -43,12 +41,6 @@ pipeline {
         KIE_TOOLS_BUILD__runEndToEndTests = 'false'
         KIE_TOOLS_BUILD__buildContainerImages = 'true'
 
-        OPENSHIFT_APP_NAME = 'kie-sandbox'
-
-        KIE_SANDBOX__imageRegistry = 'quay.io'
-        KIE_SANDBOX__imageAccount = 'kie-tools'
-        KIE_SANDBOX__imageName = 'kie-sandbox-image'
-        KIE_SANDBOX__imageBuildTags = "latest ${params.TAG}"
         ONLINE_EDITOR__buildInfo = "${params.TAG}"
         ONLINE_EDITOR__extendedServicesDownloadUrlLinux = "https://github.com/kiegroup/kie-tools/releases/download/${params.TAG}/kie_sandbox_extended_services_linux_${params.TAG}.tar.gz"
         ONLINE_EDITOR__extendedServicesDownloadUrlMacOs = "https://github.com/kiegroup/kie-tools/releases/download/${params.TAG}/kie_sandbox_extended_services_macos_${params.TAG}.dmg"
@@ -59,6 +51,13 @@ pipeline {
         ONLINE_EDITOR__dmnDevDeploymentBaseImageName = 'dmn-dev-deployment-base-image'
         ONLINE_EDITOR__dmnDevDeploymentBaseImageTag = "${params.TAG}"
         ONLINE_EDITOR__gtmId = 'GTM-PQGMKNW'
+        ONLINE_EDITOR__corsProxyUrl = 'https://cors-proxy-kie-sandbox.rhba-0ad6762cc85bcef5745bb684498c2436-0000.us-south.containers.appdomain.cloud'
+        DMN_DEV_DEPLOYMENT_BASE_IMAGE__registry = 'quay.io'
+        DMN_DEV_DEPLOYMENT_BASE_IMAGE__account = 'kie-tools'
+        DMN_DEV_DEPLOYMENT_BASE_IMAGE__name = 'dmn-dev-deployment-base-image'
+        DMN_DEV_DEPLOYMENT_BASE_IMAGE__buildTags = "latest ${params.TAG}"
+
+        PNPM_FILTER_STRING = '-F @kie-tools/online-editor...'
     }
 
     stages {
@@ -90,6 +89,20 @@ pipeline {
             }
         }
 
+        stage('Checkout kogito-online') {
+            steps {
+                dir('kogito-online') {
+                    script {
+                        githubUtils.checkoutRepo(
+                            'http://github.com/kiegroup/kogito-online.git',
+                            'gh-pages',
+                            "${pipelineVars.kieToolsBotGithubCredentialsId}"
+                        )
+                    }
+                }
+            }
+        }
+
         stage('Setup PNPM') {
             steps {
                 dir('kie-tools') {
@@ -103,63 +116,65 @@ pipeline {
         stage('PNPM Bootstrap') {
             steps {
                 dir('kie-tools') {
-                    buildUtils.bootstrapPnpm('-F @kie-tools/kie-sandbox-image...')
+                    script {
+                        buildUtils.pnpmBootstrap("${env.PNPM_FILTER_STRING}")
+                    }
                 }
             }
         }
+
         stage('Build') {
             steps {
                 dir('kie-tools') {
-                    sh '''#!/bin/bash -el
-                    pnpm -F @kie-tools/kie-sandbox-image... build:prod
-                    '''.trim()
+                    script {
+                        buildUtils.pnpmBuild("${env.PNPM_FILTER_STRING}")
+                    }
                 }
             }
         }
 
-        stage('Push kie-sandbox-image to quay.io') {
+        stage('Deploy to GitHub Pages (kogito-online)') {
             when {
                 expression { !params.DRY_RUN }
             }
             steps {
-                script {
-                    dockerUtils.pushImageToRegistry(
-                        "${env.KIE_SANDBOX__imageRegistry}/${env.KIE_SANDBOX__imageAccount}",
-                        "${env.KIE_SANDBOX__imageName}",
-                        "${env.KIE_SANDBOX__imageBuildTags}",
-                        "${pipelineVars.quayPushCredentialsId}"
-                    )
-                }
-            }
-        }
+                dir('kogito-online') {
+                    script {
+                        editorsDir = "editors/${params.TAG}"
 
-        stage('Prepare environment variables for OpenShift deployment') {
-            when {
-                expression { !params.DRY_RUN }
-            }
-            steps {
-                sh """#!/bin/bash -el
-                echo "KIE_SANDBOX_EXTENDED_SERVICES_URL=${params.KIE_SANDBOX_EXTENDED_SERVICES_URL}" >> deployment.env
-                echo "KIE_SANDBOX_CORS_PROXY_URL=${params.KIE_SANDBOX_CORS_PROXY_URL}" >> deployment.env
-                """.trim()
-            }
-        }
+                        sh """#!/bin/bash -el
+                        git config --global user.email 'kietoolsbot@gmail.com'
+                        git config --global user.name 'KIE Tools Bot (kiegroup)'
+                        git checkout gh-pages
 
-        stage('Deploy kie-sandbox-image to OpenShift') {
-            when {
-                expression { !params.DRY_RUN }
-            }
-            steps {
-                script {
-                    openShiftUtils.createOrUpdateApp(
-                        "${env.OPENSHIFT_APP_NAME}",
-                        "${params.TAG}",
-                        "${env.KIE_SANDBOX__imageRegistry}/${env.KIE_SANDBOX__imageAccount}/${env.KIE_SANDBOX__imageName}:${params.TAG}",
-                        "${env.OPENSHIFT_PART_OF}",
-                        'js',
-                        "${pipelineVars.openshiftCredentialsId}",
-                        './deployment.env'
-                    )
+                        echo "Reset deployment dir"
+                        shopt -s extglob
+                        rm -rf -- !("dev"|"editors"|"standalone"|"chrome-extension"|"swf-chrome-extension"|".nojekyll"|"CNAME"|"0.23.0")
+
+                        echo "Copy Editor resources"
+                        rm -rf ${editorsDir}
+                        mkdir -p ${editorsDir}
+                        cp -RL ../kie-tools/packages/stunner-editors/dist/dmn ${editorsDir}
+                        cp -RL ../kie-tools/packages/stunner-editors/dist/bpmn ${editorsDir}
+                        cp -RL ../kie-tools/packages/stunner-editors/dist/scesim ${editorsDir}
+                        rm -rf ./editors/latest
+                        ln -s ${params.TAG} ./editors/latest
+
+                        echo "Copy Online Editor resources"
+                        rm -rf ./gwt-editors
+                        cp -r ../kie-tools/packages/online-editor/dist/* .
+                        rm -rf ./gwt-editors
+                        ln -s ${editorsDir} gwt-editors
+
+                        echo "Commit changes and push"
+                        git add .
+                        git commit -m "Deploy ${params.TAG} (Editors + Online Editor)"
+                        """.trim()
+
+                        withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: "GH_USER", passwordVariable: "GH_PASSWORD")]) {
+                            sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/kogito-online.git gh-pages')
+                        }
+                    }
                 }
             }
         }
@@ -167,7 +182,6 @@ pipeline {
 
     post {
         always {
-            // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }

@@ -41,6 +41,8 @@ pipeline {
         KIE_TOOLS_BUILD__runTests = 'false'
         KIE_TOOLS_BUILD__runEndToEndTests = 'false'
         KIE_TOOLS_BUILD__buildContainerImages = 'true'
+
+        PNPM_FILTER_STRING = '-F @kie-tools/kn-plugin-workflow...'
     }
 
     stages {
@@ -78,47 +80,86 @@ pipeline {
             }
         }
 
-        stage('Create PNPM filter for building') {
-            steps {
-                script {
-                    pnpmFilter = sh(returnStdout: true, script: "#!/bin/bash -el \n pnpm -r exec 'bash' '-c' 'PKG_NAME=\$(jq -r \".name\" package.json) PKG_IS_PVT=\$(jq -r \".private\" package.json); if [ \"$PKG_IS_PVT\" != \"true\" ]; then echo \"-F $PKG_NAME...\"; fi'").trim()
-                    sh """
-                    echo ${pnpmFilter}
-                    echo 'filter<<EOF' >> .filterPnpmString
-                    echo ${pnpmFilter} >> .filterPnpmString
-                    echo 'EOF' >> .filterPnpmString
-                    """.trim()
-                    env.PNPM_FILTER_STRING_FOR_BUILDING = sh(returnStdout: true, script: 'cat .filterPnpmString')
-                }
-            }
-        }
-
         stage('PNPM Bootstrap') {
             steps {
-                buildUtils.bootstrapPnpm("${env.PNPM_FILTER_STRING_FOR_BUILDING}")
+                script {
+                    buildUtils.pnpmBootstrap("${env.PNPM_FILTER_STRING}")
+                }
             }
         }
 
         stage('Build') {
             steps {
-                sh """#!/bin/bash -el
-                pnpm ${env.PNPM_FILTER_STRING_FOR_BUILDING} build:prod
-                """.trim()
+                script {
+                    buildUtils.pnpmBuild("${env.PNPM_FILTER_STRING}")
+                }
             }
         }
 
-        stage('Publish packages to the NPM registry') {
+        stage('Upload Knative CLI Workflow Plugin for Linux') {
             when {
                 expression { !params.DRY_RUN }
             }
             steps {
-                withCredentials([string(credentialsId: "${pipelineVars.npmTokenCredentialsId}", variable: 'NPM_TOKEN')]) {
-                    sh """#!/bin/bash -el
-                    echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-                    export PNPM_FILTER_STRING_FOR_PUBLISHING=\$(pnpm -r exec 'bash' '-c' 'PKG_NAME=\$(jq -r ".name" package.json) PKG_IS_PVT=\$(jq -r ".private" package.json); if [ "$PKG_IS_PVT" != "true" ]; then echo "-F $PKG_NAME"; fi')
-                    echo $PNPM_FILTER_STRING_FOR_PUBLISHING
-                    pnpm $PNPM_FILTER_STRING_FOR_PUBLISHING exec 'bash' '-c' 'PKG_NAME=\$(jq -r ".name" package.json); NPM_PKG_INFO=\$(npm view $PKG_NAME@${params.TAG} name || echo ""); if [ -z $NPM_PKG_INFO ]; then pnpm publish --no-git-checks --access public; fi'
-                    """.trim()
+                script {
+                    githubUtils.uploadReleaseAsset(
+                        "${params.UPLOAD_ASSET_URL}",
+                        'packages/kn-plugin-workflow/dist/kn-workflow-linux-amd64',
+                        "kn-workflow-linux-amd64-${params.TAG}",
+                        'application/octet-stream',
+                        "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
+                    )
+                }
+            }
+        }
+
+        stage('Upload Knative CLI Workflow Plugin for macOS') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                script {
+                    githubUtils.uploadReleaseAsset(
+                        "${params.UPLOAD_ASSET_URL}",
+                        'packages/kn-plugin-workflow/dist/kn-workflow-darwin-amd64',
+                        "kn-workflow-darwin-amd64-${params.TAG}",
+                        'application/octet-stream',
+                        "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
+                    )
+                }
+            }
+        }
+
+        stage('Upload Knative CLI Workflow Plugin for macOS M1') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                script {
+                    githubUtils.uploadReleaseAsset(
+                        "${params.UPLOAD_ASSET_URL}",
+                        'packages/kn-plugin-workflow/dist/kn-workflow-darwin-arm64',
+                        "kn-workflow-darwin-arm64-${params.TAG}",
+                        'application/octet-stream',
+                        "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
+                    )
+                }
+            }
+        }
+
+        stage('Upload Knative CLI Workflow Plugin for Windows') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                script {
+                    githubUtils.uploadReleaseAsset(
+                        "${params.UPLOAD_ASSET_URL}",
+                        'packages/kn-plugin-workflow/dist/kn-workflow-windows-amd64.exe',
+                        "kn-workflow-windows-amd64-${params.TAG}.exe",
+                        'application/octet-stream',
+                        "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
+                    )
                 }
             }
         }

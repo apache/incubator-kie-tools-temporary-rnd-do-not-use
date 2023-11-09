@@ -33,7 +33,6 @@ pipeline {
         booleanParam(description: 'Dry run', name: 'DRY_RUN', defaultValue: true)
         string(description: 'Tag', name: 'TAG', defaultValue: '0.0.0')
         string(description: 'Base Ref', name: 'BASE_REF')
-        string(description: 'Upload Asset Url', name: 'UPLOAD_ASSET_URL')
     }
 
     environment {
@@ -41,6 +40,13 @@ pipeline {
         KIE_TOOLS_BUILD__runTests = 'false'
         KIE_TOOLS_BUILD__runEndToEndTests = 'false'
         KIE_TOOLS_BUILD__buildContainerImages = 'true'
+
+        DASHBUILDER__viewerImageRegistry = 'quay.io'
+        DASHBUILDER__viewerImageAccount = 'kie-tools'
+        DASHBUILDER__viewerImageName = 'dashbuilder-viewer-image'
+        DASHBUILDER__viewerImageBuildTags = "latest ${params.TAG}"
+
+        PNPM_FILTER_STRING = '-F @kie-tools/dashbuilder-viewer-image...'
     }
 
     stages {
@@ -60,50 +66,59 @@ pipeline {
 
         stage('Checkout kie-tools') {
             steps {
-                script {
-                    githubUtils.checkoutRepo(
-                        "http://github.com/${pipelineVars.githubRepositorySlug}.git",
-                        "${params.BASE_REF}",
-                        "${pipelineVars.kieToolsBotGithubCredentialsId}"
-                    )
+                dir('kie-tools') {
+                    script {
+                        githubUtils.checkoutRepo(
+                            "http://github.com/${pipelineVars.githubRepositorySlug}.git",
+                            "${params.BASE_REF}",
+                            "${pipelineVars.kieToolsBotGithubCredentialsId}"
+                        )
+                    }
                 }
             }
         }
 
         stage('Setup PNPM') {
             steps {
-                script {
-                    buildUtils.setupPnpm()
+                dir('kie-tools') {
+                    script {
+                        buildUtils.setupPnpm()
+                    }
                 }
             }
         }
 
         stage('PNPM Bootstrap') {
             steps {
-                buildUtils.bootstrapPnpm('-F kie-editors-dev-vscode-extension...')
+                dir('kie-tools') {
+                    script {
+                        buildUtils.pnpmBootstrap("${env.PNPM_FILTER_STRING}")
+                    }
+                }
             }
         }
 
         stage('Build') {
             steps {
-                sh '''#!/bin/bash -el
-                pnpm -F kie-editors-dev-vscode-extension... build:prod
-                '''.trim()
+                dir('kie-tools') {
+                    script {
+                        buildUtils.pnpmBuild("${env.PNPM_FILTER_STRING}")
+                    }
+                }
             }
         }
 
-        stage('Upload VS Code Extension (dev)') {
+        stage('Push dashbuilder-viewer-image to quay.io') {
             when {
                 expression { !params.DRY_RUN }
             }
             steps {
                 script {
-                    githubUtils.uploadReleaseAsset(
-                        "${params.UPLOAD_ASSET_URL}",
-                        "packages/kie-editors-dev-vscode-extension/dist/kie_editors_dev_vscode_extension_${params.TAG}.vsix",
-                        "vscode_extension_dev_${params.TAG}.vsix",
-                        'application/zip',
-                        "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
+                    dockerUtils.pushImageToRegistry(
+                        "${env.DASHBUILDER__viewerImageRegistry}/${env.DASHBUILDER__viewerImageAccount}",
+                        "${env.DASHBUILDER__viewerImageName}",
+                        "${env.DASHBUILDER__viewerImageBuildTags}",
+                        "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }

@@ -26,14 +26,13 @@ pipeline {
     }
 
     options {
-        timeout(time: 60, unit: 'MINUTES')
+        timeout(time: 90, unit: 'MINUTES')
     }
 
     parameters {
         booleanParam(description: 'Dry run', name: 'DRY_RUN', defaultValue: true)
         string(description: 'Tag', name: 'TAG', defaultValue: '0.0.0')
         string(description: 'Base Ref', name: 'BASE_REF')
-        string(description: 'Upload Asset Url', name: 'UPLOAD_ASSET_URL')
     }
 
     environment {
@@ -78,33 +77,46 @@ pipeline {
             }
         }
 
+        stage('Create PNPM filter for building') {
+            steps {
+                script {
+                    pnpmFilter = sh returnStdout: true, script:"""#!/bin/bash -el
+                    PNPM_FILTER_STRING_FOR_BUILDING=\$(pnpm -r exec 'bash' '-c' 'PKG_NAME=\$(jq -r ".name" package.json) PKG_IS_PVT=\$(jq -r ".private" package.json); if [[ "\$PKG_IS_PVT" != "true" ]]; then echo "-F \$PKG_NAME..."; fi')
+                    echo \$PNPM_FILTER_STRING_FOR_BUILDING
+                    """.trim()
+                    env.PNPM_FILTER_STRING_FOR_BUILDING = pnpmFilter.trim()
+                }
+            }
+        }
+
         stage('PNPM Bootstrap') {
             steps {
-                buildUtils.bootstrapPnpm('-F @kie-tools/extended-services...')
+                script {
+                    buildUtils.pnpmBootstrap("${env.PNPM_FILTER_STRING_FOR_BUILDING}")
+                }
             }
         }
 
         stage('Build') {
             steps {
-                sh '''#!/bin/bash -el
-                pnpm -F @kie-tools/extended-services... build:prod
-                '''.trim()
+                script {
+                    buildUtils.pnpmBuild("${env.PNPM_FILTER_STRING_FOR_BUILDING}")
+                }
             }
         }
 
-        stage('Upload Extended Services for Linux') {
+        stage('Publish packages to the NPM registry') {
             when {
                 expression { !params.DRY_RUN }
             }
             steps {
-                script {
-                    githubUtils.uploadReleaseAsset(
-                        "${params.UPLOAD_ASSET_URL}",
-                        'packages/extended-services/dist/linux/kie_sandbox_extended_services.tar.gz',
-                        "kie_sandbox_extended_services_linux_${params.TAG}.tar.gz",
-                        'application/tar+gzip',
-                        "${pipelineVars.kieToolsBotGithubTokenCredentialsId}"
-                    )
+                withCredentials([string(credentialsId: "${pipelineVars.npmTokenCredentialsId}", variable: 'NPM_TOKEN')]) {
+                    sh """#!/bin/bash -el
+                    echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+                    PNPM_FILTER_STRING_FOR_PUBLISHING=\$(pnpm -r exec 'bash' '-c' 'PKG_NAME=\$(jq -r ".name" package.json) PKG_IS_PVT=\$(jq -r ".private" package.json); if [[ "\$PKG_IS_PVT" != "true" ]]; then echo "-F \$PKG_NAME"; fi')
+                    echo \$PNPM_FILTER_STRING_FOR_PUBLISHING
+                    pnpm \$PNPM_FILTER_STRING_FOR_PUBLISHING exec 'bash' '-c' 'PKG_NAME=\$(jq -r ".name" package.json); NPM_PKG_INFO=\$(npm view \$PKG_NAME@${params.TAG} name || echo ""); if [[ -z \$NPM_PKG_INFO ]]; then pnpm publish --no-git-checks --access public; fi'
+                    """.trim()
                 }
             }
         }

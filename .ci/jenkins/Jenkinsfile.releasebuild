@@ -26,26 +26,18 @@ pipeline {
     }
 
     options {
-        timeout(time: 240, unit: 'MINUTES')
+        timeout(time: 360, unit: 'MINUTES')
     }
 
     parameters {
         booleanParam(description: 'Dry run', name: 'DRY_RUN', defaultValue: true)
         string(description: 'Base Ref', name: 'BASE_REF')
         string(description: 'Tag', name: 'TAG', defaultValue: '0.0.0')
-        string(description: 'Upload asset url', name: 'DOWNLOAD_ASSET_URL', defaultValue: '')
+        string(description: 'Upload asset url', name: 'UPLOAD_ASSET_URL', defaultValue: '')
         string(description: 'Runners', name: 'RUNNERS', defaultValue: '{"dmn_dev_deployment_base_image":"false","kie_sandbox_image":"false","kie_sandbox_extended_services_image":"false","cors_proxy_image":"false","online_editor":"false","chrome_extensions":"false","vscode_extensions_dev":"false","vscode_extensions_prod":"false","npm_packages":"false","standalone_editors_cdn":"false","extended_services":"false","serverless_logic_web_tools":"false","serverless_logic_web_tools_swf_builder_image":"false","serverless_logic_web_tools_base_builder_image":"false","serverless_logic_web_tools_swf_dev_mode_image":"false","dashbuilder_viewer_image":"false","kn_plugin_workflow":"false"}')
     }
 
     environment {
-        KIE_TOOLS_BUILD__runLinters = 'false'
-        KIE_TOOLS_BUILD__runTests = 'false'
-        KIE_TOOLS_BUILD__runEndToEndTests = 'false'
-        KIE_TOOLS_BUILD__buildContainerImages = 'true'
-
-        OPENSHIFT_NAMESPACE = 'kie-sandbox'
-        OPENSHIFT_PART_OF = 'kie-sandbox-app'
-
         DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT = 'SKIPPED'
         KIE_SANDBOX_EXTENDED_SERVICES_IMAGE_JOB_RESULT = 'SKIPPED'
         CORS_PROXY_IMAGE_JOB_RESULT = 'SKIPPED'
@@ -63,7 +55,7 @@ pipeline {
         stage('Set Runners') {
             steps {
                 script {
-                    runners = readJSON text: env.RUNNERS
+                    runners = readJSON text: "${env.RUNNERS}"
                     env.DMN_DEV_DEPLOYMENT_BASE_IMAGE = runners.dmn_dev_deployment_base_image
                     env.KIE_SANDBOX_IMAGE = runners.kie_sandbox_image
                     env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE = runners.kie_sandbox_extended_services_image
@@ -114,15 +106,17 @@ pipeline {
                 expression { env.DMN_DEV_DEPLOYMENT_BASE_IMAGE == 'true' }
             }
             steps {
-                env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT = build(
-                    wait: true,
-                    job: 'dmn-dev-deployment',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}"),
-                    ]
-                ).getResult()
+                script {
+                    env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/dmn-dev-deployment',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -131,17 +125,19 @@ pipeline {
                 expression { env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE == 'true' }
             }
             steps {
-                env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE_JOB_RESULT = build(
-                    wait: true,
-                    job: 'kie-sandbox-extended-services',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}"),
-                    ]
-                ).getResult()
+                script {
+                    env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/kie-sandbox-extended-services',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
 
-                env.KIE_SANDBOX_EXTENDED_SERVICES_URL = openShiftUtils.getAppRoute('kie-sandbox-extended-services', "${pipelineVars.openshiftCredentialsId}")
+                    env.KIE_SANDBOX_EXTENDED_SERVICES_URL = openShiftUtils.getAppRoute('kie-sandbox-extended-services', "${pipelineVars.openshiftCredentialsId}")
+                }
             }
         }
 
@@ -150,17 +146,19 @@ pipeline {
                 expression { env.CORS_PROXY_IMAGE == 'true' }
             }
             steps {
-                env.CORS_PROXY_IMAGE_JOB_RESULT = build(
-                    wait: true,
-                    job: 'cors-proxy',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}")
-                    ]
-                ).getResult()
+                script {
+                    env.CORS_PROXY_IMAGE_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/cors-proxy',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
 
-                env.KIE_SANDBOX_CORS_PROXY_URL = openShiftUtils.getAppRoute('cors-proxy', "${pipelineVars.openshiftCredentialsId}")
+                    env.KIE_SANDBOX_CORS_PROXY_URL = openShiftUtils.getAppRoute('cors-proxy', "${pipelineVars.openshiftCredentialsId}")
+                }
             }
         }
 
@@ -169,19 +167,21 @@ pipeline {
                 expression { env.KIE_SANDBOX_IMAGE == 'true' }
             }
             steps {
-                env.KIE_SANDBOX_IMAGE_JOB_RESULT = build(
-                    wait: true,
-                    job: 'kie-sandbox',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}"),
-                        string(name: 'KIE_SANDBOX_EXTENDED_SERVICES_URL', value: "${env.KIE_SANDBOX_EXTENDED_SERVICES_URL}"),
-                        string(name: 'KIE_SANDBOX_CORS_PROXY_URL', value: "${env.KIE_SANDBOX_CORS_PROXY_URL}"),
-                    ]
-                ).getResult()
+                script {
+                    env.KIE_SANDBOX_IMAGE_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/kie-sandbox',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}"),
+                            string(name: 'KIE_SANDBOX_EXTENDED_SERVICES_URL', value: "${env.KIE_SANDBOX_EXTENDED_SERVICES_URL}"),
+                            string(name: 'KIE_SANDBOX_CORS_PROXY_URL', value: "${env.KIE_SANDBOX_CORS_PROXY_URL}")
+                        ]
+                    ).getResult()
 
-                env.KIE_SANDBOX_URL = openShiftUtils.getAppRoute('kie-sandbox', "${pipelineVars.openshiftCredentialsId}")
+                    env.KIE_SANDBOX_URL = openShiftUtils.getAppRoute('kie-sandbox', "${pipelineVars.openshiftCredentialsId}")
+                }
             }
         }
 
@@ -191,16 +191,18 @@ pipeline {
                 expression { env.EXTENDED_SERVICES == 'true' }
             }
             steps {
-                env.EXTENDED_SERVICES_JOB_RESULT = build(
-                    wait: true,
-                    job: 'extended-services',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}"),
-                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
-                    ]
-                ).getResult()
+                script {
+                    env.EXTENDED_SERVICES_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/extended-services',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}"),
+                            string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -209,15 +211,17 @@ pipeline {
                 expression { env.ONLINE_EDITOR == 'true' && (env.EXTENDED_SERVICES_JOB_RESULT == 'SUCCESS' || env.EXTENDED_SERVICES_JOB_RESULT == 'SKIPPED') && (env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SUCCESS' || env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT != 'SKIPPED') }
             }
             steps {
-                env.ONLINE_EDITOR_JOB_RESULT = build(
-                    wait: true,
-                    job: 'online-editor',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}")
-                    ]
-                ).getResult()
+                script {
+                    env.ONLINE_EDITOR_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/online-editor',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -226,16 +230,18 @@ pipeline {
                 expression { env.CHROME_EXTENSIONS == 'true' && (env.EXTENDED_SERVICES_JOB_RESULT == 'SUCCESS' || env.EXTENDED_SERVICES_JOB_RESULT == 'SKIPPED') && (env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SUCCESS' || env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SKIPPED') && (env.ONLINE_EDITOR_JOB_RESULT == 'SUCCESS' || env.ONLINE_EDITOR_JOB_RESULT == 'SKIPPED') }
             }
             steps {
-                env.CHROME_EXTENSIONS_JOB_RESULT = build(
-                    wait: true,
-                    job: 'chrome-extensions',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}"),
-                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
-                    ]
-                ).getResult()
+                script {
+                    env.CHROME_EXTENSIONS_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/chrome-extensions',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}"),
+                            string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -244,16 +250,18 @@ pipeline {
                 expression { env.VSCODE_EXTENSIONS_DEV == 'true' }
             }
             steps {
-                env.VSCODE_EXTENSIONS_DEV_JOB_RESULT = build(
-                    wait: true,
-                    job: 'vscode-extensions-dev',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}"),
-                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
-                    ]
-                ).getResult()
+                script {
+                    env.VSCODE_EXTENSIONS_DEV_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/vscode-extensions-dev',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}"),
+                            string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -262,16 +270,18 @@ pipeline {
                 expression { env.VSCODE_EXTENSIONS_PROD == 'true' }
             }
             steps {
-                env.CHROME_EXTENSIONS_JOB_RESULT = build(
-                    wait: true,
-                    job: 'vscode-extensions-prod',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}"),
-                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
-                    ]
-                ).getResult()
+                script {
+                    env.CHROME_EXTENSIONS_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/vscode-extensions-prod',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}"),
+                            string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -280,32 +290,36 @@ pipeline {
                 expression { env.NPM_PACKAGES == 'true' }
             }
             steps {
-                env.NPM_PACKAGES_JOB_RESULT = build(
-                    wait: true,
-                    job: 'npm-packages',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}")
-                    ]
-                ).getResult()
+                script {
+                    env.NPM_PACKAGES_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/npm-packages',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
+                }
             }
         }
-ß
+
         stage('Standalone Editors CDN') {
             when {
                 expression { env.STANDALONE_EDITORS_CDN == 'true' && (env.EXTENDED_SERVICES_JOB_RESULT == 'SUCCESS' || env.EXTENDED_SERVICES_JOB_RESULT == 'SKIPPED') && (env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SUCCESS' || env.DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT == 'SKIPPED') && (env.ONLINE_EDITOR_JOB_RESULT == 'SUCCESS' || env.ONLINE_EDITOR_JOB_RESULT == 'SKIPPED') && (env.CHROME_EXTENSIONS_JOB_RESULT == 'SUCCESS' || env.CHROME_EXTENSIONS_JOB_RESULT == 'SKIPPED') }
             }
             steps {
-                env.STANDALONE_EDITORS_CDN_JOB_RESULT = build(
-                    wait: true,
-                    job: 'standalone-editors-cdn',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}")
-                    ]
-                ).getResult()
+                script {
+                    env.STANDALONE_EDITORS_CDN_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/standalone-editors-cdn',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -314,16 +328,18 @@ pipeline {
                 expression { env.KN_PLUGIN_WORKFLOW == 'true' }
             }
             steps {
-                env.KN_PLUGIN_WORKFLOW_JOB_RESULT = build(
-                    wait: true,
-                    job: 'kn-plugin-workflow',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}"),
-                        string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
-                    ]
-                ).getResult()
+                script {
+                    env.KN_PLUGIN_WORKFLOW_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/kn-plugin-workflow',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}"),
+                            string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -332,15 +348,17 @@ pipeline {
                 expression { env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE == 'true' }
             }
             steps {
-                env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE_JOB_RESULT = build(
-                    wait: true,
-                    job: 'serverless-logic-web-tools-swf-builder-image',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}")
-                    ]
-                ).getResult()
+                script {
+                    env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/serverless-logic-web-tools-swf-builder-image',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -349,15 +367,17 @@ pipeline {
                 expression { env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE == 'true' }
             }
             steps {
-                env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE_JOB_RESULT = build(
-                    wait: true,
-                    job: 'serverless-logic-web-tools-swf-dev-mode-image',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}")
-                    ]
-                ).getResult()
+                script {
+                    env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/serverless-logic-web-tools-swf-dev-mode-image',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -366,15 +386,17 @@ pipeline {
                 expression { env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE == 'true' }
             }
             steps {
-                env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE_JOB_RESULT = build(
-                    wait: true,
-                    job: 'serverless-logic-web-tools-base-builder-image',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}")
-                    ]
-                ).getResult()
+                script {
+                    env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/serverless-logic-web-tools-base-builder-image',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -383,15 +405,17 @@ pipeline {
                 expression { env.DASHBUILDER_VIEWER_IMAGE == 'true' }
             }
             steps {
-                env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT = build(
-                    wait: true,
-                    job: 'dashbuilder-viewer-image',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}")
-                    ]
-                ).getResult()
+                script {
+                    env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/dashbuilder-viewer-image',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
+                }
             }
         }
 
@@ -400,15 +424,17 @@ pipeline {
                 expression { env.SERVERLESS_LOGIC_WEB_TOOLS == 'true' && (env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE_JOB_RESULT == 'SUCCESS' || env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_BUILDER_IMAGE_JOB_RESULT == 'SKIPPED') && (env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE_JOB_RESULT == 'SUCCESS' || env.SERVERLESS_LOGIC_WEB_TOOLS_BASE_BUILDER_IMAGE_JOB_RESULT == 'SKIPPED') && (env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE_JOB_RESULT == 'SUCCESS' || env.SERVERLESS_LOGIC_WEB_TOOLS_SWF_DEV_MODE_IMAGE_JOB_RESULT == 'SKIPPED') && (env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT == 'SUCCESS' || env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT == 'SKIPPED') }
             }
             steps {
-                env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT = build(
-                    wait: true,
-                    job: 'serverless-logic-web-tools',
-                    parameters: [
-                        booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
-                        string(name: 'BASE_REF', value: "${params.BASE_REF}"),
-                        string(name: 'TAG', value: "${params.TAG}")
-                    ]
-                ).getResult()
+                script {
+                    env.DASHBUILDER_VIEWER_IMAGE_JOB_RESULT = build(
+                        wait: true,
+                        job: 'kie-tools-ci-release-jobs/serverless-logic-web-tools',
+                        parameters: [
+                            booleanParam(name: 'DRY_RUN', value: "${params.DRY_RUN}"),
+                            string(name: 'BASE_REF', value: "${params.BASE_REF}"),
+                            string(name: 'TAG', value: "${params.TAG}")
+                        ]
+                    ).getResult()
+                }
             }
         }
     }

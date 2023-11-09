@@ -33,6 +33,8 @@ pipeline {
         booleanParam(description: 'Dry run', name: 'DRY_RUN', defaultValue: true)
         string(description: 'Tag', name: 'TAG', defaultValue: '0.0.0')
         string(description: 'Base Ref', name: 'BASE_REF')
+        string(description: 'Kie Sandbox Extendend Services Url', name: 'KIE_SANDBOX_EXTENDED_SERVICES_URL')
+        string(description: 'Kie Sandbox Cors Proxy Url', name: 'KIE_SANDBOX_CORS_PROXY_URL')
     }
 
     environment {
@@ -41,12 +43,26 @@ pipeline {
         KIE_TOOLS_BUILD__runEndToEndTests = 'false'
         KIE_TOOLS_BUILD__buildContainerImages = 'true'
 
-        OPENSHIFT_APP_NAME = 'cors-proxy'
+        OPENSHIFT_APP_NAME = 'kie-sandbox'
+        OPENSHIFT_PART_OF = 'kie-sandbox-app'
+        OPENSHIFT_NAMESPACE = 'kie-sandbox'
 
-        CORS_PROXY_IMAGE__imageRegistry = 'quay.io'
-        CORS_PROXY_IMAGE__imageAccount = 'kie-tools'
-        CORS_PROXY_IMAGE__imageName = 'cors-proxy-image'
-        CORS_PROXY_IMAGE__imageBuildTags = "latest ${params.TAG}"
+        KIE_SANDBOX__imageRegistry = 'quay.io'
+        KIE_SANDBOX__imageAccount = 'kie-tools'
+        KIE_SANDBOX__imageName = 'kie-sandbox-image'
+        KIE_SANDBOX__imageBuildTags = "latest ${params.TAG}"
+        ONLINE_EDITOR__buildInfo = "${params.TAG}"
+        ONLINE_EDITOR__extendedServicesDownloadUrlLinux = "https://github.com/kiegroup/kie-tools/releases/download/${params.TAG}/kie_sandbox_extended_services_linux_${params.TAG}.tar.gz"
+        ONLINE_EDITOR__extendedServicesDownloadUrlMacOs = "https://github.com/kiegroup/kie-tools/releases/download/${params.TAG}/kie_sandbox_extended_services_macos_${params.TAG}.dmg"
+        ONLINE_EDITOR__extendedServicesDownloadUrlWindows = "https://github.com/kiegroup/kie-tools/releases/download/${params.TAG}/kie_sandbox_extended_services_windows_${params.TAG}.exe"
+        ONLINE_EDITOR__extendedServicesCompatibleVersion = "${params.TAG}"
+        ONLINE_EDITOR__dmnDevDeploymentBaseImageRegistry = 'quay.io'
+        ONLINE_EDITOR__dmnDevDeploymentBaseImageAccount = 'kie-tools'
+        ONLINE_EDITOR__dmnDevDeploymentBaseImageName = 'dmn-dev-deployment-base-image'
+        ONLINE_EDITOR__dmnDevDeploymentBaseImageTag = "${params.TAG}"
+        ONLINE_EDITOR__gtmId = 'GTM-PQGMKNW'
+
+        PNPM_FILTER_STRING = '-F @kie-tools/kie-sandbox-image...'
     }
 
     stages {
@@ -91,7 +107,9 @@ pipeline {
         stage('PNPM Bootstrap') {
             steps {
                 dir('kie-tools') {
-                    buildUtils.bootstrapPnpm('-F @kie-tools/cors-proxy-image...')
+                    script {
+                        buildUtils.pnpmBootstrap("${env.PNPM_FILTER_STRING}")
+                    }
                 }
             }
         }
@@ -99,30 +117,42 @@ pipeline {
         stage('Build') {
             steps {
                 dir('kie-tools') {
-                    sh '''#!/bin/bash -el
-                    pnpm -F @kie-tools/cors-proxy-image... build:prod
-                    '''.trim()
+                    script {
+                        buildUtils.pnpmBuild("${env.PNPM_FILTER_STRING}")
+                    }
                 }
             }
         }
 
-        stage('Push cors-proxy-image to quay.io') {
+        stage('Push kie-sandbox-image to quay.io') {
             when {
                 expression { !params.DRY_RUN }
             }
             steps {
                 script {
                     dockerUtils.pushImageToRegistry(
-                        "${env.CORS_PROXY_IMAGE__imageRegistry}/${env.CORS_PROXY_IMAGE__imageAccount}",
-                        "${env.CORS_PROXY_IMAGE__imageName}",
-                        "${env.CORS_PROXY_IMAGE__imageBuildTags}",
+                        "${env.KIE_SANDBOX__imageRegistry}/${env.KIE_SANDBOX__imageAccount}",
+                        "${env.KIE_SANDBOX__imageName}",
+                        "${env.KIE_SANDBOX__imageBuildTags}",
                         "${pipelineVars.quayPushCredentialsId}"
                     )
                 }
             }
         }
 
-        stage('Deploy cors-proxy-image to OpenShift') {
+        stage('Prepare environment variables for OpenShift deployment') {
+            when {
+                expression { !params.DRY_RUN }
+            }
+            steps {
+                sh """#!/bin/bash -el
+                echo "KIE_SANDBOX_EXTENDED_SERVICES_URL=${params.KIE_SANDBOX_EXTENDED_SERVICES_URL}" >> deployment.env
+                echo "KIE_SANDBOX_CORS_PROXY_URL=${params.KIE_SANDBOX_CORS_PROXY_URL}" >> deployment.env
+                """.trim()
+            }
+        }
+
+        stage('Deploy kie-sandbox-image to OpenShift') {
             when {
                 expression { !params.DRY_RUN }
             }
@@ -131,10 +161,11 @@ pipeline {
                     openShiftUtils.createOrUpdateApp(
                         "${env.OPENSHIFT_APP_NAME}",
                         "${params.TAG}",
-                        "${env.CORS_PROXY_IMAGE__imageRegistry}/${env.CORS_PROXY_IMAGE__imageAccount}/${env.CORS_PROXY_IMAGE__imageName}:${params.TAG}",
+                        "${env.KIE_SANDBOX__imageRegistry}/${env.KIE_SANDBOX__imageAccount}/${env.KIE_SANDBOX__imageName}:${params.TAG}",
                         "${env.OPENSHIFT_PART_OF}",
-                        'nodejs',
-                        "${pipelineVars.openshiftCredentialsId}"
+                        'js',
+                        "${pipelineVars.openshiftCredentialsId}",
+                        './deployment.env'
                     )
                 }
             }
@@ -143,7 +174,6 @@ pipeline {
 
     post {
         always {
-            // Clean workspace
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }
