@@ -28,14 +28,14 @@ pipeline {
         string(description: 'Node version to install', name: 'NODE_VERSION', defaultValue: '18.14.0')
         string(description: 'PNPM version to install', name: 'PNPM_VERSION', defaultValue: '8.7.0')
         string(description: 'GO version to install', name: 'GO_VERSION', defaultValue: '1.21.1')
+        string(description: 'Image tag', name: 'IMAGE_TAG', defaultValue: 'ubuntu')
     }
 
     environment {
         DOCKER_CONFIG = "${WORKSPACE}/.docker"
 
         IMAGE_NAME = "quay.io/kie-tools/kie-tools-ci-build"
-        IMAGE_TAG = "ubuntu"
-        IMAGE_NAME_TAG = "${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+        IMAGE_NAME_TAG = "${env.IMAGE_NAME}:${params.IMAGE_TAG}"
     }
 
     options {
