@@ -81,6 +81,26 @@ def uploadReleaseAsset(String uploadUrl, String assetPath, String assetName, Str
 }
 
 /**
+* Set build status
+*/
+def commitStatus(String repository, String commit, String context, String state, String jobUrl) {
+    withCredentials([string(credentialsId: credentialsId, variable: 'GITHUB_TOKEN')]) {
+        response = sh returnStdout: true, script: """
+        set +x
+        curl -L \
+        -X POST \
+        -H "Accept: application/vnd.github+json" \
+        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        https://api.github.com/repos/${repository}/statuses/${commit} \
+        -d '{"state":"${state}","target_url":"${jobUrl}","description":"${message}","context":"${context}"}'
+        """.trim()
+
+        return response
+    }
+}
+
+/**
 * Parse an release upload asset url to remove unecessary strings
 */
 def parseReleaseAssetUploadUrl(String uploadUrl) {
@@ -112,19 +132,6 @@ def squashedMerge(String author, String branch, String repository) {
     git merge --squash ${author}/${branch}
     git commit --no-edit
     """.trim()
-}
-
-/**
-* Set build status
-*/
-def setBuildStatus(String repo, String message, String state) {
-    step([
-        $class: "GitHubCommitStatusSetter",
-        reposSource: [$class: "ManuallyEnteredRepositorySource", url: repo],
-        contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "ci/jenkins/build-status"],
-        errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
-        statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
-    ]);
 }
 
 /**
