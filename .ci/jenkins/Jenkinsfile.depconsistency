@@ -37,6 +37,12 @@ pipeline {
     }
 
     post {
+        success {
+            setBuildStatus(env.GIT_URL, "CI :: Dependencies consistency check succeeded", "SUCCESS");
+        }
+        failure {
+            setBuildStatus(env.GIT_URL, "CI :: Dependencies consistency check failed", "FAILURE");
+        }
         always {
             // Clean workspace
             cleanWs(deleteDirs: true)
