@@ -115,6 +115,19 @@ def squashedMerge(String author, String branch, String repository) {
 }
 
 /**
+* Set build status
+*/
+def setBuildStatus(String repo, String message, String state) {
+    step([
+        $class: "GitHubCommitStatusSetter",
+        reposSource: [$class: "ManuallyEnteredRepositorySource", url: repo],
+        contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "ci/jenkins/build-status"],
+        errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
+        statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
+    ]);
+}
+
+/**
 * @return the Github repository slug (org/repo) from an URL
 */
 def getRepoSlug(String url) {
