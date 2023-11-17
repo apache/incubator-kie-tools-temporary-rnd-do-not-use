@@ -1,6 +1,6 @@
 FROM cruizba/ubuntu-dind:latest
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     sudo bash wget gpg locales uidmap apt-transport-https ca-certificates curl software-properties-common \
     && rm -rf /var/lib/apt/lists/* \
 	&& localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
@@ -23,7 +23,6 @@ libxi6 \
 libnss3 \
 libgconf-2-4 \
 libpci-dev \
-lsof \
 openjdk-11-jdk \
 git \
 jq \
@@ -40,13 +39,15 @@ RUN apt-get clean autoclean && apt-get autoremove --yes && rm -rf /var/lib/{apt,
 
 # Install firefox
 RUN wget -O /tmp/firefox-latest.tar.bz2 "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" && \
-    tar xjf /tmp/firefox-latest.tar.bz2 -C /tmp && ls /tmp && mv /tmp/firefox /opt/firefox-latest && \
+    tar xjf /tmp/firefox-latest.tar.bz2 -C /tmp && mv /tmp/firefox /opt/firefox-latest && \
+    rm /tmp/firefox-latest.tar.bz2 && \
     ln -s /opt/firefox-latest/firefox /usr/bin/firefox
 
 # Install chromedriver
 RUN CHROME_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | jq -r .channels.Stable.version) && \
     wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/linux64/chromedriver-linux64.zip && \
-    unzip /tmp/chromedriver-linux64.zip -d /tmp && mv /tmp/chromedriver-linux64/chromedriver /usr/bin/
+    unzip /tmp/chromedriver-linux64.zip -d /tmp && mv /tmp/chromedriver-linux64/chromedriver /usr/bin/ && \
+    rm /tmp/chromedriver-linux64.zip
 
 RUN echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf && sysctl -p
 
@@ -91,7 +92,7 @@ RUN bash -c 'source $HOME/.nvm/nvm.sh && \
 
 # Maven setup
 RUN wget https://archive.apache.org/dist/maven/maven-3/3.8.6/binaries/apache-maven-3.8.6-bin.tar.gz -P /tmp && \
-    sudo tar xzf /tmp/apache-maven-3.8.6-bin.tar.gz -C /opt && \
+    sudo tar xzf /tmp/apache-maven-3.8.6-bin.tar.gz -C /opt && rm /tmp/apache-maven-3.8.6-bin.tar.gz && \
     sudo ln -s /opt/apache-maven-3.8.6 /opt/maven && \
     echo 'export M2_HOME=/opt/maven' | sudo tee -a /etc/profile.d/maven.sh && \
     echo 'export MAVEN_HOME=${M2_HOME}' | sudo tee -a /etc/profile.d/maven.sh && \
@@ -100,24 +101,21 @@ RUN wget https://archive.apache.org/dist/maven/maven-3/3.8.6/binaries/apache-mav
 
 # Golang setup
 RUN wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz -P /tmp && \
-    sudo tar xzf /tmp/go*.tar.gz -C /opt && \
+    sudo tar xzf /tmp/go*.tar.gz -C /opt && rm /tmp/go*.tar.gz && \
     echo 'export GOPATH=${HOME}/go' | sudo tee /etc/profile.d/go.sh && \
     echo 'export PATH=${PATH}:/opt/go/bin:${GOPATH}/bin' | sudo tee -a /etc/profile.d/go.sh && \
     echo "source /etc/profile.d/go.sh" >> $HOME/.bashrc
 
 # CodeQL setup
 RUN wget https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.15.0/codeql-bundle-linux64.tar.gz -P /tmp && \
-    sudo tar xzf /tmp/codeql-bundle-linux64.tar.gz -C /opt && \
+    sudo tar xzf /tmp/codeql-bundle-linux64.tar.gz -C /opt && rm /tmp/codeql-bundle-linux64.tar.gz && \
     sudo chown -R nonrootuser:nonrootuser /opt/codeql && \
     echo 'export PATH=/opt/codeql:${PATH}' | sudo tee -a /etc/profile.d/codeql.sh && \
     echo "source /etc/profile.d/codeql.sh" >> $HOME/.bashrc
 
 # Openshift client setup
 RUN wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -P /tmp && \
-    sudo tar -C /usr/bin/ -xvzf /tmp/openshift-client-linux.tar.gz oc
-
-# Cleanup /tmp
-RUN sudo rm -rf /tmp/*
+    sudo tar -C /usr/bin/ -xvzf /tmp/openshift-client-linux.tar.gz oc && rm /tmp/openshift-client-linux.tar.gz
 
 # Env vars
 ENV JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
