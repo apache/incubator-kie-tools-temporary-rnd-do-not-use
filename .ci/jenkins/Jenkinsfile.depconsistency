@@ -26,19 +26,18 @@ pipeline {
     }
 
     stages {
-        stage("Check dependencies consistency") {
+        stage('Check dependencies consistency') {
             steps {
-                sh """#!/bin/bash -el
+                sh '''#!/bin/bash -el
                 pnpm bootstrap:root
                 npx --yes syncpack@6.2.0 list-mismatches
-                """.trim()
+                '''.trim()
             }
         }
     }
 
     post {
         always {
-            // Clean workspace
             cleanWs(deleteDirs: true)
         }
     }
