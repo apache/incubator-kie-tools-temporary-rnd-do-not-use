@@ -29,8 +29,8 @@ pipeline {
     }
 
     environment {
-        RESULTS_DIR = "/tmp/codeql/results"
-        DATABASE_DIR = "/tmp/codeql/db"
+        RESULTS_DIR = '/tmp/codeql/results'
+        DATABASE_DIR = '/tmp/codeql/db'
         GO_RESULTS_DIR = "${RESULTS_DIR}/go"
         GO_DATABASE_DIR = "${DATABASE_DIR}/go"
         JS_RESULTS_DIR = "${RESULTS_DIR}/js"
@@ -39,15 +39,15 @@ pipeline {
 
     stages {
 
-        stage("Pre-check") {
+        stage('Pre-check') {
             steps {
-                sh """#!/bin/bash -el
+                sh '''#!/bin/bash -el
                 codeql version --format=json
-                """.trim()
+                '''.trim()
             }
         }
 
-        stage("CodeQL") {
+        stage('CodeQL') {
             parallel {
                 stage('CodeQL GO') {
                     steps {
@@ -105,7 +105,7 @@ pipeline {
 
         stage('Upload results') {
             steps {
-                withCredentials([string(credentialsId: "${pipelineVars.kieToolsBotGithubTokenCredentialsID}", variable: "GITHUB_TOKEN")]) {
+                withCredentials([string(credentialsId: "${pipelineVars.kieToolsBotGithubTokenCredentialsId}", variable: 'GITHUB_TOKEN')]) {
                     script {
                         def repoSlug = githubUtils.getRepoSlug("${env.CHANGE_URL}")
 
@@ -128,10 +128,8 @@ pipeline {
 
     post {
         always {
-            // Artifacts
             archiveArtifacts artifacts: "${pipelineVars.defaultArtifactsTempDir}/code-analysis-results-go.zip, ${pipelineVars.defaultArtifactsTempDir}/code-analysis-results-js.zip", fingerprint: true, allowEmptyArchive: true
-
-            // Clean workspace
+            
             cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }
