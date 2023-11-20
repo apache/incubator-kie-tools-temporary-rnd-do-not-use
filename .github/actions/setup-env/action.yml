@@ -24,16 +24,6 @@ runs:
         cd ${{ inputs.working_dir }}
         mkdir tmp
 
-    - name: "Setup pnpm"
-      uses: pnpm/action-setup@c3b53f6a16e57305370b4ae5a540c2077a1d50dd
-      with:
-        version: 8.7.0
-
-    - name: "Setup Node"
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18.14.0
-
     - name: "Setup JDK 11"
       uses: actions/setup-java@de1bb2b0c5634f0fc4438d7aa9944e68f9bf86cc
       with:
@@ -49,6 +39,20 @@ runs:
       uses: stCarolas/setup-maven@07fbbe97d97ef44336b7382563d66743297e442f #v4.5
       with:
         maven-version: 3.8.6
+
+    - name: "Setup MSCV"
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@cec98b9d092141f74527d0afa6feb2af698cfe89 #v1.12.1
+
+    - name: "Setup pnpm"
+      uses: pnpm/action-setup@c3b53f6a16e57305370b4ae5a540c2077a1d50dd
+      with:
+        version: 8.7.0
+
+    - name: "Setup Node"
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18.14.0
 
     - name: Setup docker (macOS only)
       if: runner.os == 'macOS'
