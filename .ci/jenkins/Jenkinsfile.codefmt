@@ -26,19 +26,18 @@ pipeline {
     }
 
     stages {
-        stage("Check code formatting") {
+        stage('Check code formatting') {
             steps {
-                sh """#!/bin/bash -el
+                sh '''#!/bin/bash -el
                 pnpm bootstrap:root
                 pnpm format:check
-                """.trim()
+                '''.trim()
             }
         }
     }
 
     post {
         always {
-            // Clean workspace
             cleanWs(deleteDirs: true)
         }
     }
