@@ -123,15 +123,23 @@ def checkoutRepo(String url, String branch, String credentialsId) {
 /**
 * Perform a squashed merge on a local repository
 */
-def squashedMerge(String author, String branch, String repository) {
+def squashedMerge(String author, String branch, String url) {
     sh """#!/bin/bash -el
     git config --global user.email "kietoolsbot@gmail.com"
     git config --global user.name "KIE Tools Bot (kiegroup)"
-    git remote add ${author} https://github.com/${repository}.git
+    git remote add ${author} ${url}
     git fetch ${author} ${branch}
     git merge --squash ${author}/${branch}
     git commit --no-edit
     """.trim()
+}
+
+/**
+* Checkout a github repository and perform a squashed merge on a local repository
+*/
+def checkoutRepoSquashedMerge(String author, String branch, String url, String targetBranch, String targetUrl, String credentialsId) {
+    checkoutRepo(targetUrl, targetBranch, credentialsId)
+    squashedMerge(author, branch, url)
 }
 
 /**
