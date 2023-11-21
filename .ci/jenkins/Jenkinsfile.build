@@ -76,7 +76,7 @@ pipeline {
                         githubUtils.squashedMerge(
                             "${env.CHANGE_AUTHOR}",
                             "${env.CHANGE_BRANCH}",
-                            "${env.CHANGE_AUTHOR}/${pipelineVars.githubRepositoryName}"
+                            "http://github.com/${env.CHANGE_AUTHOR}/${pipelineVars.githubRepositoryName}.git"
                         )
                     }
                 }
