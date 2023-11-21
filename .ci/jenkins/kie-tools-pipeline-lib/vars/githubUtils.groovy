@@ -139,7 +139,9 @@ def squashedMerge(String author, String branch, String url) {
 */
 def checkoutRepoSquashedMerge(String author, String branch, String url, String targetBranch, String targetUrl, String credentialsId) {
     checkoutRepo(targetUrl, targetBranch, credentialsId)
-    squashedMerge(author, branch, url)
+    if (author && branch && url) {
+        squashedMerge(author, branch, url)
+    }
 }
 
 /**
