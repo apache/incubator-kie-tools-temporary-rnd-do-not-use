@@ -1,9 +1,8 @@
 name: "Staging :: Publish"
 
 on:
-  workflow_dispatch:
-  # push:
-  #   branches: ["**-prerelease"]
+  push:
+    branches: ["**-prerelease"]
 
 concurrency:
   group: staging-publish
