@@ -23,9 +23,6 @@ pipeline {
 
     parameters {
         string(description: 'Image tag', name: 'IMAGE_TAG', defaultValue: 'latest')
-        string(description: 'Change Author', name: 'CHANGE_AUTHOR', defaultValue: '')
-        string(description: 'Change Branch', name: 'CHANGE_BRANCH', defaultValue: '')
-        string(description: 'Change Target', name: 'CHANGE_TARGET', defaultValue: '')
     }
 
     stages {
@@ -57,10 +54,10 @@ pipeline {
                         dir('kie-tools') {
                             script {
                                 githubUtils.checkoutRepoSquashedMerge(
-                                    "${params.CHANGE_AUTHOR}",
-                                    "${params.CHANGE_BRANCH}",
-                                    "https://github.com/${params.CHANGE_AUTHOR}/${pipelineVars.githubRepositoryName}.git",
-                                    "${params.CHANGE_TARGET}",
+                                    env.CHANGE_AUTHOR,
+                                    env.CHANGE_BRANCH,
+                                    "https://github.com/${env.CHANGE_AUTHOR}/${pipelineVars.githubRepositoryName}.git",
+                                    env.CHANGE_TARGET ?: env.BRANCH_NAME,
                                     "https://github.com/${pipelineVars.githubRepositoryOrg}/${pipelineVars.githubRepositoryName}.git",
                                     "${pipelineVars.kieToolsBotGithubCredentialsId}"
                                 )

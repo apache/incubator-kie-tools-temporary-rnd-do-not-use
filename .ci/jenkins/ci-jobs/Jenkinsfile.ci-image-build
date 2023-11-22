@@ -18,11 +18,7 @@ pipeline {
     agent any
 
     parameters {
-        string(description: 'Image tag', name: 'IMAGE_TAG')
-        string(description: 'Change Author', name: 'CHANGE_AUTHOR', defaultValue: '')
-        string(description: 'Change Branch', name: 'CHANGE_BRANCH', defaultValue: '')
-        string(description: 'Change Target', name: 'CHANGE_TARGET', defaultValue: '')
-        string(description: 'Change ID', name: 'CHANGE_ID', defaultValue: '')
+        string(description: 'Image tag', name: 'IMAGE_TAG', defaultValue: 'latest')
     }
 
     environment {
@@ -57,10 +53,10 @@ pipeline {
                 dir('kie-tools') {
                     script {
                         githubUtils.checkoutRepoSquashedMerge(
-                            "${params.CHANGE_AUTHOR}",
-                            "${params.CHANGE_BRANCH}",
-                            "https://github.com/${params.CHANGE_AUTHOR}/${pipelineVars.githubRepositoryName}.git",
-                            "${params.CHANGE_TARGET}",
+                            env.CHANGE_AUTHOR,
+                            env.CHANGE_BRANCH,
+                            "https://github.com/${env.CHANGE_AUTHOR}/${pipelineVars.githubRepositoryName}.git",
+                            env.CHANGE_TARGET ?: env.BRANCH_NAME,
                             "https://github.com/${pipelineVars.githubRepositoryOrg}/${pipelineVars.githubRepositoryName}.git",
                             "${pipelineVars.kieToolsBotGithubCredentialsId}"
                         )
@@ -75,7 +71,7 @@ pipeline {
             steps {
                 dir('kie-tools') {
                     script {
-                        if (params.CHANGE_ID == '' && params.CHANGE_TARGET == 'main') {
+                        if (!env.CHANGE_ID && env.BRANCH_NAME == 'main') {
                             sh """
                             docker build -t ${IMAGE_NAME_TAG} -f .ci/kie-tools-ci-build.Dockerfile .
                             docker tag ${IMAGE_NAME_TAG} ${IMAGE_ACCOUNT}/${IMAGE_NAME}:latest
