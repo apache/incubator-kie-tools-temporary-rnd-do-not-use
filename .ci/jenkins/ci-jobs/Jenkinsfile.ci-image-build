@@ -25,6 +25,7 @@ pipeline {
         IMAGE_ACCOUNT = 'quay.io/kie-tools'
         IMAGE_NAME = 'kie-tools-ci-build'
         IMAGE_NAME_TAG = "${IMAGE_ACCOUNT}/${IMAGE_NAME}:${params.IMAGE_TAG}"
+        DOCKER_CONFIG = "${WORKSPACE}/.docker"
     }
 
     options {
