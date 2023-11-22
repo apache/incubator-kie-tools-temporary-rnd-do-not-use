@@ -70,7 +70,7 @@ pipeline {
                 script {
                     BUILD_IMAGE_TAG = "${env.GIT_COMMIT}"
                     BUILD_IMAGE_JOB_STATUS = build(
-                        job: 'kie-tools-ci-jobs/kie-tools-ci-image-build',
+                        job: 'KIE/kie-tools/kie-tools-ci-jobs/kie-tools-ci-image-build',
                         parameters: [
                             string(name: 'IMAGE_TAG', value: "${env.GIT_COMMIT}"),
                             string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
@@ -92,7 +92,7 @@ pipeline {
                     steps {
                         script {
                             build(
-                                job: 'kie-tools-ci-jobs/kie-tools-ci-build',
+                                job: 'KIE/kie-tools/kie-tools-ci-jobs/kie-tools-ci-build',
                                 parameters: [
                                     string(name: 'IMAGE_TAG', value: "${BUILD_IMAGE_TAG}"),
                                     string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
@@ -108,7 +108,7 @@ pipeline {
                     steps {
                         script {
                             build(
-                                job: 'kie-tools-ci-jobs/kie-tools-ci-check-dependencies',
+                                job: 'KIE/kie-tools/kie-tools-ci-jobs/kie-tools-ci-check-dependencies',
                                 parameters: [
                                     string(name: 'IMAGE_TAG', value: "${BUILD_IMAGE_TAG}"),
                                     string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
@@ -124,7 +124,7 @@ pipeline {
                     steps {
                         script {
                             build(
-                                job: 'kie-tools-ci-jobs/kie-tools-ci-check-code-formatting',
+                                job: 'KIE/kie-tools/kie-tools-ci-jobs/kie-tools-ci-check-code-formatting',
                                 parameters: [
                                     string(name: 'IMAGE_TAG', value: "${BUILD_IMAGE_TAG}"),
                                     string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
@@ -140,7 +140,7 @@ pipeline {
                     steps {
                         script {
                             build(
-                                job: 'kie-tools-ci-jobs/kie-tools-ci-check-code-quality',
+                                job: 'KIE/kie-tools/kie-tools-ci-jobs/kie-tools-ci-check-code-quality',
                                 parameters: [
                                     string(name: 'IMAGE_TAG', value: "${BUILD_IMAGE_TAG}"),
                                     string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
