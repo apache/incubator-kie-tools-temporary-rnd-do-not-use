@@ -142,7 +142,7 @@ pipeline {
 
                 stage('Upload results') {
                     steps {
-                        withCredentials([string(credentialsId: "${pipelineVars.kieToolsGithubCTokenCredentialsId}", variable: 'GITHUB_TOKEN')]) {
+                        withCredentials([string(credentialsId: "${pipelineVars.kieToolsGithubCodeQLTokenCredentialsId}", variable: 'GITHUB_TOKEN')]) {
                             script {
                                 def repoSlug = pipelineVars.githubRepositorySlug
                                 def ref = env.CHANGE_ID ? "refs/pull/${env.CHANGE_ID}/head" : (env.CHANGE_TARGET ? "refs/heads/${env.CHANGE_TARGET}" : "refs/heads/${env.BRANCH_NAME}")
