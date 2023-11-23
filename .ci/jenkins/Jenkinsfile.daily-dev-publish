@@ -90,6 +90,8 @@ pipeline {
         SERVERLESS_LOGIC_WEB_TOOLS__corsProxyUrl = 'https://daily-dev-cors-proxy-kie-sandbox.rhba-0ad6762cc85bcef5745bb684498c2436-0000.us-south.containers.appdomain.cloud'
 
         BUILD_DATE = sh(script: "echo `date +'%Y-%m-%d %T'`", returnStdout: true).trim()
+
+        DOCKER_CONFIG = "${WORKSPACE}/.docker"
     }
 
     stages {
