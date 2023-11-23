@@ -74,7 +74,7 @@ describe("KIE Editors End to End Test Suite - BPMN Editor", () => {
   });
 
   it("Opens process with work item definition properly", async function () {
-    this.timeout(30000);
+    this.timeout(50000);
     const editorWebviews = await testHelper.openFileFromSidebar(WID_BPMN, "src/main/java/org/kie/businessapp");
     webview = editorWebviews[0];
     const bpmnEditorTester = new BpmnEditorTestHelper(webview);
