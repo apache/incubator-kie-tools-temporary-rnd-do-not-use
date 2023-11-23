@@ -63,9 +63,10 @@ def createOrUpdateApp(String project, String appName, String imageTag, String im
 /**
 * @return String route to the OpenShift application
 */
-def getAppRoute(String appName, String credentialsId) {
+def getAppRoute(String project, String appName, String credentialsId) {
     withCredentials([usernamePassword(credentialsId: credentialsId, usernameVariable: 'OS_SERVER', passwordVariable: 'OS_TOKEN')]) {
         sh 'set +x && oc login --token=$OS_TOKEN --server=$OS_SERVER --insecure-skip-tls-verify'
+        sh "oc project ${project}"
         route = sh(returnStdout: true, script: "oc get route ${appName} -o jsonpath='{.spec.host}'").trim()
         sh 'oc logout'
 
