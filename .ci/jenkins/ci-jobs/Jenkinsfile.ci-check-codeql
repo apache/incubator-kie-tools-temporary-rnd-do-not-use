@@ -163,13 +163,17 @@ pipeline {
                     }
                 }
             }
+
+            post {
+                always {
+                    archiveArtifacts artifacts: "${pipelineVars.defaultArtifactsTempDir}/code-analysis-results-go.zip, ${pipelineVars.defaultArtifactsTempDir}/code-analysis-results-js.zip", fingerprint: true, allowEmptyArchive: true
+                }
+            }
         }
     }
 
     post {
         always {
-            archiveArtifacts artifacts: "${pipelineVars.defaultArtifactsTempDir}/code-analysis-results-go.zip, ${pipelineVars.defaultArtifactsTempDir}/code-analysis-results-js.zip", fingerprint: true, allowEmptyArchive: true
-
             cleanWs(deleteDirs: true)
         }
     }

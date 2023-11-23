@@ -148,25 +148,27 @@ pipeline {
                     }
                 }
             }
+
+            post {
+                always {
+                    // Tests reports
+                    withChecks('Tests') {
+                        junit allowEmptyResults: true, testResults: "${pipelineVars.defaultArtifactsTempDir}/test-reports/**/junit-report*.xml"
+                    }
+
+                    // E2E Tests reports
+                    withChecks('E2E Tests') {
+                        junit allowEmptyResults: true, testResults: "${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-reports/**/junit-report*.xml"
+                    }
+
+                    archiveArtifacts artifacts: "${pipelineVars.defaultArtifactsTempDir}/build-artifacts.zip, ${pipelineVars.defaultArtifactsTempDir}/tests-reports.zip, ${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-reports.zip, ${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-artifacts.zip", fingerprint: true
+                }
+            }
         }
     }
 
     post {
         always {
-            // Tests reports
-            withChecks('Tests') {
-                junit allowEmptyResults: true, testResults: "${pipelineVars.defaultArtifactsTempDir}/test-reports/**/junit-report*.xml"
-            }
-
-            // E2E Tests reports
-            withChecks('E2E Tests') {
-                junit allowEmptyResults: true, testResults: "${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-reports/**/junit-report*.xml"
-            }
-
-            // Artifacts
-            archiveArtifacts artifacts: "${pipelineVars.defaultArtifactsTempDir}/build-artifacts.zip, ${pipelineVars.defaultArtifactsTempDir}/tests-reports.zip, ${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-reports.zip, ${pipelineVars.defaultArtifactsTempDir}/end-to-end-tests-artifacts.zip", fingerprint: true
-
-            // Clean workspace
             cleanWs(deleteDirs: true)
         }
     }
