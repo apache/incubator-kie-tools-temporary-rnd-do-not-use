@@ -39,6 +39,7 @@ describe("Serverless workflow editor - functions tests", () => {
   });
 
   beforeEach(async function () {
+    this.timeout(15000);
     await testHelper.closeAllEditors();
     await testHelper.closeAllNotifications();
   });

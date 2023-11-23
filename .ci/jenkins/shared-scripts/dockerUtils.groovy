@@ -23,7 +23,7 @@ def pushImageToRegistry(String registry, String image, String tags, String crede
         sh "set +x && docker login -u $REGISTRY_USER -p $REGISTRY_PWD $registry"
         tagList = tags.split(' ')
         for (tag in tagList) {
-            sh "docker  push $registry/$image:$tag"
+            sh "docker push $registry/$image:$tag"
         }
         sh 'docker logout'
     }

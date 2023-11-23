@@ -1,0 +1,164 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+pipeline {
+    agent any
+
+    options {
+        timeout(time: 600, unit: 'MINUTES')
+    }
+
+    stages {
+        stage('Prepare Environment') {
+            steps {
+                script {
+                    CHANGE_AUTHOR = env.CHANGE_AUTHOR ?: ''
+                    CHANGE_BRANCH = env.CHANGE_BRANCH ?: ''
+                    CHANGE_ID = env.CHANGE_ID ?: ''
+                    CHANGE_TARGET = env.CHANGE_TARGET ?: env.BRANCH_NAME
+                    BUILD_IMAGE_TAG = 'latest'
+                    BUILD_IMAGE_JOB_STATUS = 'SKIPPED'
+                }
+            }
+        }
+
+        stage('Load local shared scripts') {
+            steps {
+                script {
+                    pipelineVars = load '.ci/jenkins/shared-scripts/pipelineVars.groovy'
+                    githubUtils = load '.ci/jenkins/shared-scripts/githubUtils.groovy'
+                }
+            }
+        }
+
+        stage('Checkout KIE Tools (Simulated squashed merge)') {
+            steps {
+                dir('kie-tools') {
+                    script {
+                        githubUtils.checkoutRepoSquashedMerge(
+                            "${CHANGE_AUTHOR}",
+                            "${CHANGE_BRANCH}",
+                            "https://github.com/${CHANGE_AUTHOR}/${pipelineVars.githubRepositoryName}.git",
+                            "${CHANGE_TARGET}",
+                            "https://github.com/${pipelineVars.githubRepositoryOrg}/${pipelineVars.githubRepositoryName}.git",
+                            "${pipelineVars.kieToolsBotGithubCredentialsId}"
+                        )
+                        BUILD_IMAGE_REQUIRED = githubUtils.fileIsInChangeset('kie-tools-ci-build.Dockerfile')
+                    }
+                }
+            }
+        }
+
+        stage('Image Build') {
+            when {
+                expression { BUILD_IMAGE_REQUIRED }
+            }
+            steps {
+                script {
+                    BUILD_IMAGE_TAG = "${env.GIT_COMMIT}"
+                    BUILD_IMAGE_JOB_STATUS = build(
+                        job: 'kie-tools-ci-jobs/kie-tools-ci-image-build',
+                        parameters: [
+                            string(name: 'IMAGE_TAG', value: "${env.GIT_COMMIT}"),
+                            string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
+                            string(name: 'CHANGE_BRANCH', value: "${CHANGE_BRANCH}"),
+                            string(name: 'CHANGE_TARGET', value: "${CHANGE_TARGET}"),
+                            string(name: 'CHANGE_ID', value: "${CHANGE_ID}")
+                        ]
+                    ).result
+                }
+            }
+        }
+
+        stage('KIE Tools CI') {
+            when {
+                expression { BUILD_IMAGE_JOB_STATUS == 'SKIPPED' ||  BUILD_IMAGE_JOB_STATUS == 'SUCCESS' }
+            }
+            parallel {
+                stage('KIE Tools Build') {
+                    steps {
+                        script {
+                            build(
+                                job: 'kie-tools-ci-jobs/kie-tools-ci-build',
+                                parameters: [
+                                    string(name: 'IMAGE_TAG', value: "${BUILD_IMAGE_TAG}"),
+                                    string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
+                                    string(name: 'CHANGE_BRANCH', value: "${CHANGE_BRANCH}"),
+                                    string(name: 'CHANGE_TARGET', value: "${CHANGE_TARGET}"),
+                                ]
+                            )
+                        }
+                    }
+                }
+
+                stage('Check Dependencies') {
+                    steps {
+                        script {
+                            build(
+                                job: 'kie-tools-ci-jobs/kie-tools-ci-check-dependencies',
+                                parameters: [
+                                    string(name: 'IMAGE_TAG', value: "${BUILD_IMAGE_TAG}"),
+                                    string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
+                                    string(name: 'CHANGE_BRANCH', value: "${CHANGE_BRANCH}"),
+                                    string(name: 'CHANGE_TARGET', value: "${CHANGE_TARGET}"),
+                                ]
+                            )
+                        }
+                    }
+                }
+
+                stage('Check Code Formatting') {
+                    steps {
+                        script {
+                            build(
+                                job: 'kie-tools-ci-jobs/kie-tools-ci-check-code-formatting',
+                                parameters: [
+                                    string(name: 'IMAGE_TAG', value: "${BUILD_IMAGE_TAG}"),
+                                    string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
+                                    string(name: 'CHANGE_BRANCH', value: "${CHANGE_BRANCH}"),
+                                    string(name: 'CHANGE_TARGET', value: "${CHANGE_TARGET}"),
+                                ]
+                            )
+                        }
+                    }
+                }
+
+                stage('Check Code Quality') {
+                    steps {
+                        script {
+                            build(
+                                job: 'kie-tools-ci-jobs/kie-tools-ci-check-code-quality',
+                                parameters: [
+                                    string(name: 'IMAGE_TAG', value: "${BUILD_IMAGE_TAG}"),
+                                    string(name: 'CHANGE_AUTHOR', value: "${CHANGE_AUTHOR}"),
+                                    string(name: 'CHANGE_BRANCH', value: "${CHANGE_BRANCH}"),
+                                    string(name: 'CHANGE_TARGET', value: "${CHANGE_TARGET}"),
+                                    string(name: 'CHANGE_ID', value: "${CHANGE_ID}")
+                                ]
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs(deleteDirs: true)
+        }
+    }
+}
