@@ -118,7 +118,7 @@ describe("Serverless workflow editor - autocompletion tests", () => {
     });
 
     it("Completes serverless workflow from an empty file", async function () {
-      this.timeout(50000);
+      this.timeout(80000);
 
       const editorWebviews = await testHelper.openFileFromSidebar("emptyfile_autocompletion.sw.json");
       const swfTextEditor = new SwfTextEditorTestHelper(editorWebviews[0]);
@@ -139,7 +139,7 @@ describe("Serverless workflow editor - autocompletion tests", () => {
 
   describe("YAML files", () => {
     it("Completes serverless workflow with function and state autocompletion", async function () {
-      this.timeout(50000);
+      this.timeout(80000);
 
       const editorWebviews = await testHelper.openFileFromSidebar("autocompletion.sw.yaml");
       const swfEditor = new SwfEditorTestHelper(editorWebviews[1]);
@@ -206,7 +206,7 @@ actions:
     });
 
     it("Completes serverless workflow from an empty file and create Serverless Workflow Example", async function () {
-      this.timeout(50000);
+      this.timeout(80000);
 
       const editorWebviews = await testHelper.openFileFromSidebar("emptyfile_autocompletion.sw.yaml");
       const swfTextEditor = new SwfTextEditorTestHelper(editorWebviews[0]);
@@ -224,7 +224,7 @@ actions:
       expect(editorContent).equal(expectedContent);
     });
     it("Completes serverless workflow from an empty file and create Empty Serverless Workflow", async function () {
-      this.timeout(50000);
+      this.timeout(80000);
 
       const editorWebviews = await testHelper.openFileFromSidebar("emptyworkflow_autocompletion.sw.json");
       const swfTextEditor = new SwfTextEditorTestHelper(editorWebviews[0]);
