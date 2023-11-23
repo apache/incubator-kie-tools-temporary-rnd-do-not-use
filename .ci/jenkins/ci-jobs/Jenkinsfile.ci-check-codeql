@@ -96,13 +96,13 @@ pipeline {
                                 codeql database create ${GO_DATABASE_DIR} --language=go
 
                                 # Code Scanning suite: Queries run by default in CodeQL code scanning on GitHub.
-                                codeql database analyze ${GO_DATABASE_DIR} go-code-scanning.qls --format=sarif-latest --output=${GO_RESULTS_DIR}/go-code-scanning.sarif
+                                codeql database analyze ${GO_DATABASE_DIR} go-code-scanning.qls --sarif-category=go --format=sarif-latest --output=${GO_RESULTS_DIR}/go-code-scanning.sarif
 
                                 # Security extended suite: Queries of lower severity and precision than the default queries
-                                codeql database analyze ${GO_DATABASE_DIR} go-security-extended.qls --format=sarif-latest --output=${GO_RESULTS_DIR}/go-security-extended.sarif
+                                codeql database analyze ${GO_DATABASE_DIR} go-security-extended.qls --sarif-category=go --format=sarif-latest --output=${GO_RESULTS_DIR}/go-security-extended.sarif
 
                                 # Security and quality suite: Queries of lower severity and precision than the default queries
-                                codeql database analyze ${GO_DATABASE_DIR} go-security-and-quality.qls --format=sarif-latest --output=${GO_RESULTS_DIR}/go-security-and-quality.sarif
+                                codeql database analyze ${GO_DATABASE_DIR} go-security-and-quality.qls --sarif-category=go --format=sarif-latest --output=${GO_RESULTS_DIR}/go-security-and-quality.sarif
                                 """.trim()
                             }
                         }
@@ -117,13 +117,13 @@ pipeline {
                                 codeql database create ${JS_DATABASE_DIR} --language=javascript
 
                                 # Code Scanning suite: Queries run by default in CodeQL code scanning on GitHub.
-                                codeql database analyze ${JS_DATABASE_DIR} javascript-code-scanning.qls --format=sarif-latest --output=${JS_RESULTS_DIR}/javascript-code-scanning.sarif
+                                codeql database analyze ${JS_DATABASE_DIR} javascript-code-scanning.qls --sarif-category=javascript-typescript --format=sarif-latest --output=${JS_RESULTS_DIR}/javascript-code-scanning.sarif
 
                                 # Security extended suite: Queries of lower severity and precision than the default queries
-                                codeql database analyze ${JS_DATABASE_DIR} javascript-security-extended.qls --format=sarif-latest --output=${JS_RESULTS_DIR}/javascript-security-extended.sarif
+                                codeql database analyze ${JS_DATABASE_DIR} javascript-security-extended.qls --sarif-category=javascript-typescript --format=sarif-latest --output=${JS_RESULTS_DIR}/javascript-security-extended.sarif
 
                                 # Security and quality suite: Queries of lower severity and precision than the default queries
-                                codeql database analyze ${JS_DATABASE_DIR} javascript-security-and-quality.qls --format=sarif-latest --output=${JS_RESULTS_DIR}/javascript-security-and-quality.sarif
+                                codeql database analyze ${JS_DATABASE_DIR} javascript-security-and-quality.qls --sarif-category=javascript-typescript --format=sarif-latest --output=${JS_RESULTS_DIR}/javascript-security-and-quality.sarif
                                 """.trim()
                             }
                         }
