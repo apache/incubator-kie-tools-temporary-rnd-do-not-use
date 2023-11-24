@@ -14,8 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@Library('kie-tools-pipeline-lib')_
-
 pipeline {
     agent {
         docker {
@@ -28,6 +26,15 @@ pipeline {
     }
 
     stages {
+        stage('Load local shared scripts') {
+            steps {
+                script {
+                    pipelineVars = load '.ci/jenkins/shared-scripts/pipelineVars.groovy'
+                    githubUtils = load '.ci/jenkins/shared-scripts/githubUtils.groovy'
+                }
+            }
+        }
+
         stage('Clean workspace before build') {
             steps {
                 cleanWs(deleteDirs: true, disableDeferredWipeout: true)
@@ -110,7 +117,7 @@ pipeline {
 
     post {
         always {
-            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            cleanWs(deleteDirs: true)
         }
     }
 }

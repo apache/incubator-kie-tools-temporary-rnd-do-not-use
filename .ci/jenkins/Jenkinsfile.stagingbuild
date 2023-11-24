@@ -14,13 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-@Library('kie-tools-pipeline-lib')_
-
 pipeline {
     agent {
         docker {
-            image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
+            image 'quay.io/kie-tools/kie-tools-ci-build:latest'
             args '--shm-size=2g --privileged --group-add docker'
         }
     }
@@ -88,9 +85,24 @@ pipeline {
         SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageName = 'serverless-logic-web-tools-swf-dev-mode-image'
         SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageTag = "${params.TAG}-prerelease"
         SERVERLESS_LOGIC_WEB_TOOLS__swfDevModeImageBuildTags = "${params.TAG}-prerelease"
+
+        DOCKER_CONFIG = "${WORKSPACE}/.docker"
     }
 
     stages {
+        stage('Load local shared scripts') {
+            steps {
+                script {
+                    pipelineVars = load '.ci/jenkins/shared-scripts/pipelineVars.groovy'
+                    buildUtils = load '.ci/jenkins/shared-scripts/buildUtils.groovy'
+                    githubUtils = load '.ci/jenkins/shared-scripts/githubUtils.groovy'
+                    openShiftUtils = load '.ci/jenkins/shared-scripts/openShiftUtils.groovy'
+                    dockerUtils = load '.ci/jenkins/shared-scripts/dockerUtils.groovy'
+                    zipUtils = load '.ci/jenkins/shared-scripts/zipUtils.groovy'
+                }
+            }
+        }
+
         stage('Start required services for build and tests (DinD, Xvfb, Fluxbox)') {
             steps {
                 script {
@@ -657,6 +669,7 @@ pipeline {
                 script {
                     appName = 'staging-kie-sandbox-extended-services'
                     openShiftUtils.createOrUpdateApp(
+                        "${env.OPENSHIFT_NAMESPACE}",
                         "${appName}",
                         "${env.DEPLOY_TAG}",
                         "${env.KIE_SANDBOX_EXTENDED_SERVICES__imageRegistry}/${env.KIE_SANDBOX_EXTENDED_SERVICES__imageAccount}/${env.KIE_SANDBOX_EXTENDED_SERVICES__imageName}:${env.DEPLOY_TAG}",
@@ -664,7 +677,7 @@ pipeline {
                         'golang',
                         "${pipelineVars.openshiftCredentialsId}"
                     )
-                    env.KIE_SANDBOX_EXTENDED_SERVICES_URL = openShiftUtils.getAppRoute("${appName}", "${pipelineVars.openshiftCredentialsId}")
+                    env.KIE_SANDBOX_EXTENDED_SERVICES_URL = openShiftUtils.getAppRoute("${env.OPENSHIFT_NAMESPACE}", "${appName}", "${pipelineVars.openshiftCredentialsId}")
                 }
             }
         }
@@ -693,6 +706,7 @@ pipeline {
                 script {
                     appName = 'staging-cors-proxy'
                     openShiftUtils.createOrUpdateApp(
+                        "${env.OPENSHIFT_NAMESPACE}",
                         "${appName}",
                         "${env.DEPLOY_TAG}",
                         "${env.CORS_PROXY_IMAGE__imageRegistry}/${env.CORS_PROXY_IMAGE__imageAccount}/${env.CORS_PROXY_IMAGE__imageName}:${env.DEPLOY_TAG}",
@@ -700,7 +714,7 @@ pipeline {
                         'nodejs',
                         "${pipelineVars.openshiftCredentialsId}"
                     )
-                    env.KIE_SANDBOX_CORS_PROXY_URL = openShiftUtils.getAppRoute("${appName}", "${pipelineVars.openshiftCredentialsId}")
+                    env.KIE_SANDBOX_CORS_PROXY_URL = openShiftUtils.getAppRoute("${env.OPENSHIFT_NAMESPACE}", "${appName}", "${pipelineVars.openshiftCredentialsId}")
                 }
             }
         }
@@ -740,6 +754,7 @@ pipeline {
             steps {
                 script {
                     openShiftUtils.createOrUpdateApp(
+                        "${env.OPENSHIFT_NAMESPACE}",
                         'staging-kie-sandbox',
                         "${env.DEPLOY_TAG}",
                         "${env.KIE_SANDBOX__imageRegistry}/${env.KIE_SANDBOX__imageAccount}/${env.KIE_SANDBOX__imageName}:${env.DEPLOY_TAG}",
@@ -875,7 +890,7 @@ pipeline {
 
     post {
         always {
-            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            cleanWs(deleteDirs: true)
         }
     }
 }
