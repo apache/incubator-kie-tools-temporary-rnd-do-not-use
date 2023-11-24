@@ -249,7 +249,7 @@ pipeline {
                 dir('kogito-online-staging') {
                     script {
                         DEPLOYMENT_DIR = "${params.TAG}-prerelease"
-                        
+
                         sh """#!/bin/bash -el
                         echo "Switch to main branch"
                         git checkout main
@@ -282,10 +282,10 @@ pipeline {
                         git add ${params.TAG}-prerelease
                         git commit -m "Deploy ${params.TAG}-prerelease (staging)"
                         """.trim()
-                    }
 
-                    withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
-                        sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/kogito-online-staging.git main')
+                        withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
+                            sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/kogito-online-staging.git main')
+                        }
                     }
                 }
             }
@@ -314,10 +314,10 @@ pipeline {
                         git add ${DEPLOYMENT_DIR}
                         git commit -m "Deploy ${params.TAG}-prerelease (staging)"
                         """.trim()
-                    }
 
-                    withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
-                        sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/serverless-logic-sandbox-deployment.git gh-pages')
+                        withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
+                            sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/serverless-logic-sandbox-deployment.git gh-pages')
+                        }
                     }
                 }
             }
