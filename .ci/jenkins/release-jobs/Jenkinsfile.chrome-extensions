@@ -14,13 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-@Library('kie-tools-pipeline-lib')_
-
 pipeline {
     agent {
         docker {
-            image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
+            image 'quay.io/kie-tools/kie-tools-ci-build:latest'
             args '--shm-size=2g --privileged --group-add docker'
         }
     }
@@ -54,6 +51,17 @@ pipeline {
     }
 
     stages {
+        stage('Load local shared scripts') {
+            steps {
+                script {
+                    pipelineVars = load '.ci/jenkins/shared-scripts/pipelineVars.groovy'
+                    buildUtils = load '.ci/jenkins/shared-scripts/buildUtils.groovy'
+                    githubUtils = load '.ci/jenkins/shared-scripts/githubUtils.groovy'
+                    chromeStoreUtils = load '.ci/jenkins/shared-scripts/chromeStoreUtils.groovy'
+                }
+            }
+        }
+
         stage('Start required services for build and tests (DinD, Xvfb, Fluxbox)') {
             steps {
                 script {
@@ -150,8 +158,8 @@ pipeline {
             steps {
                 dir('kogito-online') {
                     script {
-                        editorsDir = "editors/${params.TAG}"
-                        chromeExtensionDir = "chrome-extension/${params.TAG}"
+                        EDITORS_DIR = "editors/${params.TAG}"
+                        CHROME_EXTENSION_DIR = "chrome-extension/${params.TAG}"
 
                         sh """#!/bin/bash -el
                         git config --global user.email 'kietoolsbot@gmail.com'
@@ -159,12 +167,12 @@ pipeline {
                         git checkout gh-pages
 
                         echo "Copy Chrome Extension resources"
-                        rm -rf ${chromeExtensionDir}
-                        mkdir -p ${chromeExtensionDir}
-                        cp -r ../kie-tools/packages/chrome-extension-pack-kogito-kie-editors/dist/{fonts,*-envelope.*} ${chromeExtensionDir}
-                        ln -s ../../${editorsDir}/bpmn ${chromeExtensionDir}/bpmn
-                        ln -s ../../${editorsDir}/dmn ${chromeExtensionDir}/dmn
-                        ln -s ../../${editorsDir}/scesim ${chromeExtensionDir}/scesim
+                        rm -rf ${CHROME_EXTENSION_DIR}
+                        mkdir -p ${CHROME_EXTENSION_DIR}
+                        cp -r ${WORKSPACE}/kie-tools/packages/chrome-extension-pack-kogito-kie-editors/dist/{fonts,*-envelope.*} ${CHROME_EXTENSION_DIR}
+                        ln -s ../../${EDITORS_DIR}/bpmn ${CHROME_EXTENSION_DIR}/bpmn
+                        ln -s ../../${EDITORS_DIR}/dmn ${CHROME_EXTENSION_DIR}/dmn
+                        ln -s ../../${EDITORS_DIR}/scesim ${CHROME_EXTENSION_DIR}/scesim
 
                         echo "Commit changes and push"
                         git add .
@@ -256,7 +264,7 @@ pipeline {
             steps {
                 dir('kogito-online') {
                     script {
-                        deploymentDir = "swf-chrome-extension/${params.TAG}"
+                        DEPLOYMENT_DIR = "swf-chrome-extension/${params.TAG}"
 
                         sh """#!/bin/bash -el
                         git config --global user.email 'kietoolsbot@gmail.com'
@@ -264,9 +272,9 @@ pipeline {
                         git checkout gh-pages
 
                         echo "Copy Chrome Extension resources"
-                        rm -rf ${deploymentDir}
-                        mkdir -p ${deploymentDir}
-                        cp -r ../kie-tools/packages/chrome-extension-serverless-workflow-editor/dist/{fonts,diagram,*-envelope.*,*.bundle.js,*.worker.js} ${deploymentDir}
+                        rm -rf ${DEPLOYMENT_DIR}
+                        mkdir -p ${DEPLOYMENT_DIR}
+                        cp -r ${WORKSPACE}/kie-tools/packages/chrome-extension-serverless-workflow-editor/dist/{fonts,diagram,*-envelope.*,*.bundle.js,*.worker.js} ${DEPLOYMENT_DIR}
 
                         echo "Commit changes and push"
                         git add .
@@ -337,7 +345,7 @@ pipeline {
 
     post {
         always {
-            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            cleanWs(deleteDirs: true)
         }
     }
 }

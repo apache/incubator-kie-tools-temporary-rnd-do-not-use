@@ -14,13 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-@Library('kie-tools-pipeline-lib')_
-
 pipeline {
     agent {
         docker {
-            image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
+            image 'quay.io/kie-tools/kie-tools-ci-build:latest'
             args '--shm-size=2g --privileged --group-add docker'
         }
     }
@@ -66,6 +63,16 @@ pipeline {
     }
 
     stages {
+        stage('Load local shared scripts') {
+            steps {
+                script {
+                    pipelineVars = load '.ci/jenkins/shared-scripts/pipelineVars.groovy'
+                    buildUtils = load '.ci/jenkins/shared-scripts/buildUtils.groovy'
+                    githubUtils = load '.ci/jenkins/shared-scripts/githubUtils.groovy'
+                }
+            }
+        }
+
         stage('Start required services for build and tests (DinD, Xvfb, Fluxbox)') {
             steps {
                 script {
@@ -154,7 +161,7 @@ pipeline {
                         shopt -s extglob
                         rm -rf -- !("dev"|"staging"|".nojekyll"|"CNAME"|"0.25.0"|"schemas")
                         echo "Copy resources"
-                        cp -r ../kie-tools/packages/serverless-logic-web-tools/dist/* .
+                        cp -r ${WORKSPACE}/kie-tools/packages/serverless-logic-web-tools/dist/* .
                         echo "Commit changes and push"
                         git add .
                         git commit -m "Deploy ${params.TAG}"
@@ -171,7 +178,7 @@ pipeline {
 
     post {
         always {
-            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            cleanWs(deleteDirs: true)
         }
     }
 }

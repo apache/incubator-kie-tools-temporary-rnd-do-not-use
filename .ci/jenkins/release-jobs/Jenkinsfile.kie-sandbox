@@ -14,13 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-@Library('kie-tools-pipeline-lib')_
-
 pipeline {
     agent {
         docker {
-            image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
+            image 'quay.io/kie-tools/kie-tools-ci-build:latest'
             args '--shm-size=2g --privileged --group-add docker'
         }
     }
@@ -62,10 +59,24 @@ pipeline {
         ONLINE_EDITOR__dmnDevDeploymentBaseImageTag = "${params.TAG}"
         ONLINE_EDITOR__gtmId = 'GTM-PQGMKNW'
 
+        DOCKER_CONFIG = "${WORKSPACE}/.docker"
+
         PNPM_FILTER_STRING = '-F @kie-tools/kie-sandbox-image...'
     }
 
     stages {
+        stage('Load local shared scripts') {
+            steps {
+                script {
+                    pipelineVars = load '.ci/jenkins/shared-scripts/pipelineVars.groovy'
+                    buildUtils = load '.ci/jenkins/shared-scripts/buildUtils.groovy'
+                    githubUtils = load '.ci/jenkins/shared-scripts/githubUtils.groovy'
+                    dockerUtils = load '.ci/jenkins/shared-scripts/dockerUtils.groovy'
+                    openShiftUtils = load '.ci/jenkins/shared-scripts/openShiftUtils.groovy'
+                }
+            }
+        }
+
         stage('Start required services for build and tests (DinD, Xvfb, Fluxbox)') {
             steps {
                 script {
@@ -159,6 +170,7 @@ pipeline {
             steps {
                 script {
                     openShiftUtils.createOrUpdateApp(
+                        "${env.OPENSHIFT_NAMESPACE}",
                         "${env.OPENSHIFT_APP_NAME}",
                         "${params.TAG}",
                         "${env.KIE_SANDBOX__imageRegistry}/${env.KIE_SANDBOX__imageAccount}/${env.KIE_SANDBOX__imageName}:${params.TAG}",
@@ -174,7 +186,7 @@ pipeline {
 
     post {
         always {
-            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            cleanWs(deleteDirs: true)
         }
     }
 }

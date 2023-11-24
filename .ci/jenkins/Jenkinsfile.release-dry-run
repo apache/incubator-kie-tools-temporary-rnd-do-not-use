@@ -14,12 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@Library('kie-tools-pipeline-lib')_
-
 pipeline {
     agent {
         docker {
-            image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
+            image 'quay.io/kie-tools/kie-tools-ci-build:latest'
         }
     }
 
@@ -41,7 +39,7 @@ pipeline {
 
     post {
         always {
-            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            cleanWs(deleteDirs: true)
         }
     }
 }

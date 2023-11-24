@@ -14,13 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-@Library('kie-tools-pipeline-lib')_
-
 pipeline {
     agent {
         docker {
-            image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
+            image 'quay.io/kie-tools/kie-tools-ci-build:latest'
             args '--shm-size=2g --privileged --group-add docker'
         }
     }
@@ -61,6 +58,16 @@ pipeline {
     }
 
     stages {
+        stage('Load local shared scripts') {
+            steps {
+                script {
+                    pipelineVars = load '.ci/jenkins/shared-scripts/pipelineVars.groovy'
+                    buildUtils = load '.ci/jenkins/shared-scripts/buildUtils.groovy'
+                    githubUtils = load '.ci/jenkins/shared-scripts/githubUtils.groovy'
+                }
+            }
+        }
+
         stage('Start required services for build and tests (DinD, Xvfb, Fluxbox)') {
             steps {
                 script {
@@ -140,7 +147,7 @@ pipeline {
             steps {
                 dir('kogito-online') {
                     script {
-                        editorsDir = "editors/${params.TAG}"
+                        EDITORS_DIR = "editors/${params.TAG}"
 
                         sh """#!/bin/bash -el
                         git config --global user.email 'kietoolsbot@gmail.com'
@@ -152,26 +159,26 @@ pipeline {
                         rm -rf -- !("dev"|"editors"|"standalone"|"chrome-extension"|"swf-chrome-extension"|".nojekyll"|"CNAME"|"0.23.0")
 
                         echo "Copy Editor resources"
-                        rm -rf ${editorsDir}
-                        mkdir -p ${editorsDir}
-                        cp -RL ../kie-tools/packages/stunner-editors/dist/dmn ${editorsDir}
-                        cp -RL ../kie-tools/packages/stunner-editors/dist/bpmn ${editorsDir}
-                        cp -RL ../kie-tools/packages/stunner-editors/dist/scesim ${editorsDir}
+                        rm -rf ${EDITORS_DIR}
+                        mkdir -p ${EDITORS_DIR}
+                        cp -RL ${WORKSPACE}/kie-tools/packages/stunner-editors/dist/dmn ${EDITORS_DIR}
+                        cp -RL ${WORKSPACE}/kie-tools/packages/stunner-editors/dist/bpmn ${EDITORS_DIR}
+                        cp -RL ${WORKSPACE}/kie-tools/packages/stunner-editors/dist/scesim ${EDITORS_DIR}
                         rm -rf ./editors/latest
                         ln -s ${params.TAG} ./editors/latest
 
                         echo "Copy Online Editor resources"
                         rm -rf ./gwt-editors
-                        cp -r ../kie-tools/packages/online-editor/dist/* .
+                        cp -r ${WORKSPACE}/kie-tools/packages/online-editor/dist/* .
                         rm -rf ./gwt-editors
-                        ln -s ${editorsDir} gwt-editors
+                        ln -s ${EDITORS_DIR} gwt-editors
 
                         echo "Commit changes and push"
                         git add .
                         git commit -m "Deploy ${params.TAG} (Editors + Online Editor)"
                         """.trim()
 
-                        withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: "GH_USER", passwordVariable: "GH_PASSWORD")]) {
+                        withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
                             sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/kogito-online.git gh-pages')
                         }
                     }
@@ -182,7 +189,7 @@ pipeline {
 
     post {
         always {
-            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            cleanWs(deleteDirs: true)
         }
     }
 }

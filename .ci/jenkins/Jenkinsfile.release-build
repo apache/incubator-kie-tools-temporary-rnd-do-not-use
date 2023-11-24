@@ -14,13 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-@Library('kie-tools-pipeline-lib')_
-
 pipeline {
     agent {
         docker {
-            image 'quay.io/kie-tools/kie-tools-ci-build:ubuntu'
+            image 'quay.io/kie-tools/kie-tools-ci-build:latest'
             args '--shm-size=2g --privileged --group-add docker'
         }
     }
@@ -38,6 +35,7 @@ pipeline {
     }
 
     environment {
+        OPENSHIFT_NAMESPACE = 'kie-sandbox'
         DMN_DEV_DEPLOYMENT_BASE_IMAGE_JOB_RESULT = 'SKIPPED'
         KIE_SANDBOX_EXTENDED_SERVICES_IMAGE_JOB_RESULT = 'SKIPPED'
         CORS_PROXY_IMAGE_JOB_RESULT = 'SKIPPED'
@@ -52,6 +50,15 @@ pipeline {
     }
 
     stages {
+        stage('Load local shared scripts') {
+            steps {
+                script {
+                    pipelineVars = load '.ci/jenkins/shared-scripts/pipelineVars.groovy'
+                    openShiftUtils = load '.ci/jenkins/shared-scripts/openShiftUtils.groovy'
+                }
+            }
+        }
+
         stage('Set Runners') {
             steps {
                 script {
@@ -115,7 +122,7 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -134,9 +141,9 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
 
-                    env.KIE_SANDBOX_EXTENDED_SERVICES_URL = openShiftUtils.getAppRoute('kie-sandbox-extended-services', "${pipelineVars.openshiftCredentialsId}")
+                    env.KIE_SANDBOX_EXTENDED_SERVICES_URL = openShiftUtils.getAppRoute("${env.OPENSHIFT_NAMESPACE}", 'kie-sandbox-extended-services', "${pipelineVars.openshiftCredentialsId}")
                 }
             }
         }
@@ -155,9 +162,9 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
 
-                    env.KIE_SANDBOX_CORS_PROXY_URL = openShiftUtils.getAppRoute('cors-proxy', "${pipelineVars.openshiftCredentialsId}")
+                    env.KIE_SANDBOX_CORS_PROXY_URL = openShiftUtils.getAppRoute("${env.OPENSHIFT_NAMESPACE}", 'cors-proxy', "${pipelineVars.openshiftCredentialsId}")
                 }
             }
         }
@@ -178,9 +185,9 @@ pipeline {
                             string(name: 'KIE_SANDBOX_EXTENDED_SERVICES_URL', value: "${env.KIE_SANDBOX_EXTENDED_SERVICES_URL}"),
                             string(name: 'KIE_SANDBOX_CORS_PROXY_URL', value: "${env.KIE_SANDBOX_CORS_PROXY_URL}")
                         ]
-                    ).getResult()
+                    ).result
 
-                    env.KIE_SANDBOX_URL = openShiftUtils.getAppRoute('kie-sandbox', "${pipelineVars.openshiftCredentialsId}")
+                    env.KIE_SANDBOX_URL = openShiftUtils.getAppRoute("${env.OPENSHIFT_NAMESPACE}", 'kie-sandbox', "${pipelineVars.openshiftCredentialsId}")
                 }
             }
         }
@@ -201,7 +208,7 @@ pipeline {
                             string(name: 'TAG', value: "${params.TAG}"),
                             string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -220,7 +227,7 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -240,7 +247,7 @@ pipeline {
                             string(name: 'TAG', value: "${params.TAG}"),
                             string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -260,7 +267,7 @@ pipeline {
                             string(name: 'TAG', value: "${params.TAG}"),
                             string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -280,7 +287,7 @@ pipeline {
                             string(name: 'TAG', value: "${params.TAG}"),
                             string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -299,7 +306,7 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -318,7 +325,7 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -338,7 +345,7 @@ pipeline {
                             string(name: 'TAG', value: "${params.TAG}"),
                             string(name: 'UPLOAD_ASSET_URL', value: "${params.UPLOAD_ASSET_URL}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -357,7 +364,7 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -376,7 +383,7 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -395,7 +402,7 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -414,7 +421,7 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -433,7 +440,7 @@ pipeline {
                             string(name: 'BASE_REF', value: "${params.BASE_REF}"),
                             string(name: 'TAG', value: "${params.TAG}")
                         ]
-                    ).getResult()
+                    ).result
                 }
             }
         }
@@ -441,7 +448,7 @@ pipeline {
 
     post {
         always {
-            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+            cleanWs(deleteDirs: true)
         }
     }
 }
