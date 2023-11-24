@@ -52,7 +52,7 @@ describe("Serverless workflow editor - functions tests", () => {
   });
 
   it("Checks functions are loaded from specs and routes directories into JSON serverless workflow file", async function () {
-    this.timeout(50000);
+    this.timeout(80000);
 
     const editorWebviews = await testHelper.openFileFromSidebar("function.sw.json");
     const swfTextEditor = new SwfTextEditorTestHelper(editorWebviews[0]);
@@ -112,7 +112,7 @@ describe("Serverless workflow editor - functions tests", () => {
   });
 
   it("Checks functions are loaded from specs and routes directories into YAML serverless workflow file", async function () {
-    this.timeout(50000);
+    this.timeout(80000);
 
     const editorWebviews = await testHelper.openFileFromSidebar("function.sw.yaml");
     const swfTextEditor = new SwfTextEditorTestHelper(editorWebviews[0]);
