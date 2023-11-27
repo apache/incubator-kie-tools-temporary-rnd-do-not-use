@@ -157,6 +157,8 @@ pipeline {
                                 codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-code-scanning.sarif --repository=${repoSlug} --ref=${ref} --commit=${env.GIT_COMMIT}
                                 codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-security-extended.sarif --repository=${repoSlug} --ref=${ref} --commit=${env.GIT_COMMIT}
                                 codeql github upload-results --sarif=${JS_RESULTS_DIR}/javascript-security-and-quality.sarif --repository=${repoSlug} --ref=${ref} --commit=${env.GIT_COMMIT}
+
+                                echo "REF: ${ref}"
                                 """.trim()
                             }
                         }

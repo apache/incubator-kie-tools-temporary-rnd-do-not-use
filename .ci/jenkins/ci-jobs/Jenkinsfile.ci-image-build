@@ -66,9 +66,25 @@ pipeline {
             }
         }
 
+        stage('Check image tag already exists') {
+            steps {
+                script {
+                    IMAGE_EXISTS = dockerUtils.checkImageExistsInRegistry(
+                        "${IMAGE_ACCOUNT}",
+                        "${IMAGE_NAME}",
+                        "${params.IMAGE_TAG}",
+                        "${pipelineVars.quayPushCredentialsId}"
+                    )
+                }
+            }
+        }
+
         // Trigger by PR = Tag is GIT commit hash and it has expiration = 1d
         // Trigger by Branch = Tags are GIT commit and latest and they have no expiration
         stage('Build image') {
+            when {
+                expression { !IMAGE_EXISTS }
+            }
             steps {
                 dir('kie-tools') {
                     script {
@@ -88,6 +104,9 @@ pipeline {
         }
 
         stage('Push image to registry') {
+            when {
+                expression { !IMAGE_EXISTS }
+            }
             steps {
                 script {
                     dockerUtils.pushImageToRegistry(

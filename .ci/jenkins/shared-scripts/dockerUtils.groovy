@@ -23,9 +23,23 @@ def pushImageToRegistry(String registry, String image, String tags, String crede
         sh "set +x && docker login -u $REGISTRY_USER -p $REGISTRY_PWD $registry"
         tagList = tags.split(' ')
         for (tag in tagList) {
-            sh "docker  push $registry/$image:$tag"
+            sh "docker push $registry/$image:$tag"
         }
         sh 'docker logout'
+    }
+}
+
+/**
+* @return bool image exists in a given registry
+*/
+def checkImageExistsInRegistry(String registry, String image, String tag, String credentialsId) {
+    withCredentials([usernamePassword(credentialsId: credentialsId, usernameVariable: 'REGISTRY_USER', passwordVariable: 'REGISTRY_PWD')]) {
+        sh "set +x && docker login -u $REGISTRY_USER -p $REGISTRY_PWD $registry"
+        result = sh returnStdout: true, script: """
+        docker manifest inspect $registry/$image:$tag > /dev/null 2>&1 && echo yes || echo no
+        """
+        sh 'docker logout'
+        return result == 'yes'
     }
 }
 
