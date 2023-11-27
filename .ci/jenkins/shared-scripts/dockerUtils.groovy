@@ -37,7 +37,7 @@ def checkImageExistsInRegistry(String registry, String image, String tag, String
         sh "set +x && docker login -u $REGISTRY_USER -p $REGISTRY_PWD $registry"
         result = sh returnStdout: true, script: """
         docker manifest inspect $registry/$image:$tag > /dev/null 2>&1 && echo yes || echo no
-        """
+        """.trim()
         sh 'docker logout'
         return result == 'yes'
     }
