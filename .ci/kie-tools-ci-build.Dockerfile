@@ -92,7 +92,7 @@ RUN wget https://go.dev/dl/go1.21.1.linux-amd64.tar.gz -P /tmp && \
     echo "source /etc/profile.d/go.sh" >> $HOME/.bashrc
 
 # CodeQL setup
-RUN wget https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.15.0/codeql-bundle-linux64.tar.gz -P /tmp && \
+RUN wget https://github.com/github/codeql-action/releases/download/latest/codeql-bundle-linux64.tar.gz -P /tmp && \
     sudo tar xzf /tmp/codeql-bundle-linux64.tar.gz -C /opt && rm /tmp/codeql-bundle-linux64.tar.gz && \
     sudo chown -R nonrootuser:nonrootuser /opt/codeql && \
     echo 'export PATH=/opt/codeql:${PATH}' | sudo tee -a /etc/profile.d/codeql.sh && \
