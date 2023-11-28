@@ -86,7 +86,7 @@ pipeline {
 
         stage('Release Build and Publish') {
             steps {
-                build job: 'kie-tools-ci-release-build', parameters: [
+                build job: 'KIE/kie-tools/kie-tools-release-build', parameters: [
                     booleanParam(name: 'DRY_RUN', value: false),
                     string(name: 'BASE_REF', value: "${env.RELEASE_TAG_REF}"),
                     string(name: 'TAG', value: "${params.TAG}"),
