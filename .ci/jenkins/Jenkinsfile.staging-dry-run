@@ -28,7 +28,7 @@ pipeline {
     stages {
         stage('Staging Build (dry run)') {
             steps {
-                build job: 'kie-tools-ci-staging-build', parameters: [
+                build job: 'KIE/kie-tools/kie-tools-staging-build', parameters: [
                     booleanParam(name: 'DRY_RUN', value: true),
                     string(name: 'BASE_REF', value: 'main')
                 ]
