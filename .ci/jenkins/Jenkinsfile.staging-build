@@ -188,39 +188,9 @@ pipeline {
         stage('Build (without some images)') {
             steps {
                 dir('kie-tools') {
-                    sh """#!/bin/bash -el
-                    export KIE_TOOLS_BUILD__runEndToEndTests=false
-                    export KIE_TOOLS_BUILD__runTests=false
-                    export KIE_TOOLS_BUILD__runLinters=false
-                    export KIE_TOOLS_BUILD__buildContainerImages=true
-                    export WEBPACK__minimize=true
-                    export WEBPACK__tsLoaderTranspileOnly=false
-                    export CHROME_EXTENSION__routerTargetOrigin=https://kiegroup.github.io
-                    export CHROME_EXTENSION__routerRelativePath=kogito-online-staging/${params.TAG}-prerelease/chrome-extension
-                    export CHROME_EXTENSION__onlineEditorUrl=https://kiegroup.github.io/kogito-online-staging/${params.TAG}-prerelease
-                    export CHROME_EXTENSION__manifestFile=manifest.prod.json
-                    export SWF_CHROME_EXTENSION__routerTargetOrigin=https://kiegroup.github.io
-                    export SWF_CHROME_EXTENSION__routerRelativePath=kogito-online-staging/${params.TAG}-prerelease/swf-chrome-extension
-                    export SWF_CHROME_EXTENSION__manifestFile=manifest.prod.json
-                    export ONLINE_EDITOR__buildInfo="${params.TAG} (staging) @ ${params.COMMIT_SHA}"
-                    export ONLINE_EDITOR__extendedServicesDownloadUrlLinux=${params.DOWNLOAD_ASSET_URL}/STAGING__kie_sandbox_extended_services_linux_${params.TAG}.tar.gz
-                    export ONLINE_EDITOR__extendedServicesDownloadUrlMacOs=${params.DOWNLOAD_ASSET_URL}/STAGING__kie_sandbox_extended_services_macos_${params.TAG}.dmg
-                    export ONLINE_EDITOR__extendedServicesDownloadUrlWindows=${params.DOWNLOAD_ASSET_URL}/STAGING__kie_sandbox_extended_services_windows_${params.TAG}.exe
-                    export ONLINE_EDITOR__extendedServicesCompatibleVersion=${params.TAG}
-                    export ONLINE_EDITOR__gtmId=""
-                    export ONLINE_EDITOR__corsProxyUrl=https://staging-cors-proxy-kie-sandbox.rhba-0ad6762cc85bcef5745bb684498c2436-0000.us-south.containers.appdomain.cloud
-                    export EXTENDED_SERVICES__kieSandboxUrl=https://kiegroup.github.io/kogito-online-staging/${params.TAG}-prerelease
-                    export SERVERLESS_LOGIC_WEB_TOOLS__version=${params.TAG}-prerelease
-                    export SERVERLESS_LOGIC_WEB_TOOLS__samplesRepositoryRef=${params.TAG}
-                    export SERVERLESS_LOGIC_WEB_TOOLS__buildInfo="${params.TAG} (staging) @ ${params.COMMIT_SHA}"
-                    export SERVERLESS_LOGIC_WEB_TOOLS__corsProxyUrl=https://staging-cors-proxy-kie-sandbox.rhba-0ad6762cc85bcef5745bb684498c2436-0000.us-south.containers.appdomain.cloud
-
-                    pnpm -F='!@kie-tools/serverless-logic-web-tools-swf-dev-mode-image' \
-                    -F='!@kie-tools/dmn-dev-deployment-base-image' \
-                    -F='!@kie-tools/serverless-logic-web-tools-base-builder-image' \
-                    -F='!@kie-tools/dashbuilder-viewer-image' \
-                    -r --workspace-concurrency=1 build:prod
-                    """.trim()
+                    script {
+                        buildPartial(params)
+                    }
                 }
             }
         }
@@ -248,44 +218,7 @@ pipeline {
             steps {
                 dir('kogito-online-staging') {
                     script {
-                        DEPLOYMENT_DIR = "${params.TAG}-prerelease"
-
-                        sh """#!/bin/bash -el
-                        echo "Switch to main branch"
-                        git checkout main
-
-                        echo "Reset deployment dir"
-                        rm -rf ${DEPLOYMENT_DIR}
-
-                        echo "Copy Online Editor resources to the deployment dir"
-                        cp -r ${WORKSPACE}/kie-tools/packages/online-editor/dist ${DEPLOYMENT_DIR}
-
-                        echo "Create dir for deploying KIE Editors Chrome Extension resources"
-                        mkdir ${DEPLOYMENT_DIR}/chrome-extension
-
-                        echo "Create dir for deploying SWF Editor Chrome Extension resources"
-                        mkdir ${DEPLOYMENT_DIR}/swf-chrome-extension
-
-                        echo "Copy KIE Editors Chrome Extension resources to the deployment directory"
-                        cp -r ${WORKSPACE}/kie-tools/packages/chrome-extension-pack-kogito-kie-editors/dist/{bpmn,dmn,scesim,fonts,*-envelope.*} ${DEPLOYMENT_DIR}/chrome-extension
-
-                        echo "Copy SWF Editor Chrome Extension resources to the deployment directory"
-                        cp -r ${WORKSPACE}/kie-tools/packages/chrome-extension-serverless-workflow-editor/dist/{fonts,diagram,*-envelope.*,*.bundle.js,*.worker.js} ${DEPLOYMENT_DIR}/swf-chrome-extension
-
-                        echo "Remove gwt-editors from the Online Editor deployment"
-                        rm -rf ${DEPLOYMENT_DIR}/gwt-editors
-
-                        echo "Make the Online Editor use the resources deployed by the Chrome Extension (to save space)"
-                        ln -s chrome-extension ${DEPLOYMENT_DIR}/gwt-editors
-
-                        echo "Commit changes and push"
-                        git add ${params.TAG}-prerelease
-                        git commit -m "Deploy ${params.TAG}-prerelease (staging)"
-                        """.trim()
-
-                        withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
-                            sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/kogito-online-staging.git main')
-                        }
+                        deployOnlineEditor("${params.TAG}", "${pipelineVars.kieToolsBotGithubCredentialsId}")
                     }
                 }
             }
@@ -298,26 +231,7 @@ pipeline {
             steps {
                 dir('serverless-logic-sandbox-deployment') {
                     script {
-                        DEPLOYMENT_DIR = "staging/${params.TAG}-prerelease"
-
-                        sh """#!/bin/bash -el
-                        echo "Switch to gh-pages branch"
-                        git checkout gh-pages
-
-                        echo "Reset deployment dir"
-                        rm -rf ${DEPLOYMENT_DIR}
-
-                        echo "Copy Serverless Logic Web Tools resources to the deployment dir"
-                        cp -r ${WORKSPACE}/kie-tools/packages/serverless-logic-web-tools/dist ${DEPLOYMENT_DIR}
-
-                        echo "Commit changes and push"
-                        git add ${DEPLOYMENT_DIR}
-                        git commit -m "Deploy ${params.TAG}-prerelease (staging)"
-                        """.trim()
-
-                        withCredentials([usernamePassword(credentialsId: "${pipelineVars.kieToolsBotGithubCredentialsId}", usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
-                            sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/serverless-logic-sandbox-deployment.git gh-pages')
-                        }
+                        deployServerlessLogicWebTools("${params.TAG}", "${pipelineVars.kieToolsBotGithubCredentialsId}")
                     }
                 }
             }
@@ -563,9 +477,6 @@ pipeline {
                 }
             }
         }
-
-        // STAGING: Upload Extended Services for macOS (macOS only)
-        // STAGING: Upload Extended Services for Windows (Windows only)
 
         stage('STAGING: Upload Knative CLI Workflow Plugin for Linux') {
             when {
@@ -882,5 +793,106 @@ pipeline {
         always {
             cleanWs(deleteDirs: true)
         }
+    }
+}
+
+def buildPartial(params) {
+    sh """#!/bin/bash -el
+    export KIE_TOOLS_BUILD__runEndToEndTests=false
+    export KIE_TOOLS_BUILD__runTests=false
+    export KIE_TOOLS_BUILD__runLinters=false
+    export KIE_TOOLS_BUILD__buildContainerImages=true
+    export WEBPACK__minimize=true
+    export WEBPACK__tsLoaderTranspileOnly=false
+    export CHROME_EXTENSION__routerTargetOrigin=https://kiegroup.github.io
+    export CHROME_EXTENSION__routerRelativePath=kogito-online-staging/${params.TAG}-prerelease/chrome-extension
+    export CHROME_EXTENSION__onlineEditorUrl=https://kiegroup.github.io/kogito-online-staging/${params.TAG}-prerelease
+    export CHROME_EXTENSION__manifestFile=manifest.prod.json
+    export SWF_CHROME_EXTENSION__routerTargetOrigin=https://kiegroup.github.io
+    export SWF_CHROME_EXTENSION__routerRelativePath=kogito-online-staging/${params.TAG}-prerelease/swf-chrome-extension
+    export SWF_CHROME_EXTENSION__manifestFile=manifest.prod.json
+    export ONLINE_EDITOR__buildInfo="${params.TAG} (staging) @ ${params.COMMIT_SHA}"
+    export ONLINE_EDITOR__extendedServicesDownloadUrlLinux=${params.DOWNLOAD_ASSET_URL}/STAGING__kie_sandbox_extended_services_linux_${params.TAG}.tar.gz
+    export ONLINE_EDITOR__extendedServicesDownloadUrlMacOs=${params.DOWNLOAD_ASSET_URL}/STAGING__kie_sandbox_extended_services_macos_${params.TAG}.dmg
+    export ONLINE_EDITOR__extendedServicesDownloadUrlWindows=${params.DOWNLOAD_ASSET_URL}/STAGING__kie_sandbox_extended_services_windows_${params.TAG}.exe
+    export ONLINE_EDITOR__extendedServicesCompatibleVersion=${params.TAG}
+    export ONLINE_EDITOR__gtmId=""
+    export ONLINE_EDITOR__corsProxyUrl=https://staging-cors-proxy-kie-sandbox.rhba-0ad6762cc85bcef5745bb684498c2436-0000.us-south.containers.appdomain.cloud
+    export EXTENDED_SERVICES__kieSandboxUrl=https://kiegroup.github.io/kogito-online-staging/${params.TAG}-prerelease
+    export SERVERLESS_LOGIC_WEB_TOOLS__version=${params.TAG}-prerelease
+    export SERVERLESS_LOGIC_WEB_TOOLS__samplesRepositoryRef=${params.TAG}
+    export SERVERLESS_LOGIC_WEB_TOOLS__buildInfo="${params.TAG} (staging) @ ${params.COMMIT_SHA}"
+    export SERVERLESS_LOGIC_WEB_TOOLS__corsProxyUrl=https://staging-cors-proxy-kie-sandbox.rhba-0ad6762cc85bcef5745bb684498c2436-0000.us-south.containers.appdomain.cloud
+
+    pnpm -F='!@kie-tools/serverless-logic-web-tools-swf-dev-mode-image' \
+    -F='!@kie-tools/dmn-dev-deployment-base-image' \
+    -F='!@kie-tools/serverless-logic-web-tools-base-builder-image' \
+    -F='!@kie-tools/dashbuilder-viewer-image' \
+    -r --workspace-concurrency=1 build:prod
+    """.trim()
+}
+
+
+def deployOnlineEditor(String tag, String credentialsId) {
+    DEPLOYMENT_DIR = "${tag}-prerelease"
+
+    sh """#!/bin/bash -el
+    echo "Switch to main branch"
+    git checkout main
+
+    echo "Reset deployment dir"
+    rm -rf ${DEPLOYMENT_DIR}
+
+    echo "Copy Online Editor resources to the deployment dir"
+    cp -r ${WORKSPACE}/kie-tools/packages/online-editor/dist ${DEPLOYMENT_DIR}
+
+    echo "Create dir for deploying KIE Editors Chrome Extension resources"
+    mkdir ${DEPLOYMENT_DIR}/chrome-extension
+
+    echo "Create dir for deploying SWF Editor Chrome Extension resources"
+    mkdir ${DEPLOYMENT_DIR}/swf-chrome-extension
+
+    echo "Copy KIE Editors Chrome Extension resources to the deployment directory"
+    cp -r ${WORKSPACE}/kie-tools/packages/chrome-extension-pack-kogito-kie-editors/dist/{bpmn,dmn,scesim,fonts,*-envelope.*} ${DEPLOYMENT_DIR}/chrome-extension
+
+    echo "Copy SWF Editor Chrome Extension resources to the deployment directory"
+    cp -r ${WORKSPACE}/kie-tools/packages/chrome-extension-serverless-workflow-editor/dist/{fonts,diagram,*-envelope.*,*.bundle.js,*.worker.js} ${DEPLOYMENT_DIR}/swf-chrome-extension
+
+    echo "Remove gwt-editors from the Online Editor deployment"
+    rm -rf ${DEPLOYMENT_DIR}/gwt-editors
+
+    echo "Make the Online Editor use the resources deployed by the Chrome Extension (to save space)"
+    ln -s chrome-extension ${DEPLOYMENT_DIR}/gwt-editors
+
+    echo "Commit changes and push"
+    git add ${tag}-prerelease
+    git commit -m "Deploy ${tag}-prerelease (staging)"
+    """.trim()
+
+    withCredentials([usernamePassword(credentialsId: credentialsId, usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
+        sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/kogito-online-staging.git main')
+    }
+}
+
+def deployServerlessLogicWebTools(String tag, String credentialsId) {
+    DEPLOYMENT_DIR = "staging/${tag}-prerelease"
+
+    sh """#!/bin/bash -el
+    echo "Switch to gh-pages branch"
+    git checkout gh-pages
+
+    echo "Reset deployment dir"
+    rm -rf ${DEPLOYMENT_DIR}
+
+    echo "Copy Serverless Logic Web Tools resources to the deployment dir"
+    cp -r ${WORKSPACE}/kie-tools/packages/serverless-logic-web-tools/dist ${DEPLOYMENT_DIR}
+
+    echo "Commit changes and push"
+    git add ${DEPLOYMENT_DIR}
+    git commit -m "Deploy ${tag}-prerelease (staging)"
+    """.trim()
+
+    withCredentials([usernamePassword(credentialsId: credentialsId, usernameVariable: 'GH_USER', passwordVariable: 'GH_PASSWORD')]) {
+        sh('set +x && git push https://$GH_USER:$GH_PASSWORD@github.com/kiegroup/serverless-logic-sandbox-deployment.git gh-pages')
     }
 }
