@@ -62,7 +62,7 @@ pipeline {
         stage('Set Runners') {
             steps {
                 script {
-                    runners = readJSON text: "${env.RUNNERS}"
+                    runners = readJSON text: "${params.RUNNERS}"
                     env.DMN_DEV_DEPLOYMENT_BASE_IMAGE = runners.dmn_dev_deployment_base_image
                     env.KIE_SANDBOX_IMAGE = runners.kie_sandbox_image
                     env.KIE_SANDBOX_EXTENDED_SERVICES_IMAGE = runners.kie_sandbox_extended_services_image
