@@ -150,7 +150,7 @@ pipeline {
 
                 stage('Upload end-to-end tests results to Buildkite (`main` only)') {
                     when {
-                        expression { !env.CHANGE_ID && env.GIT_BRANCH == 'main' }
+                        expression { !env.CHANGE_ID && env.BRANCH_NAME == 'main' }
                     }
                     steps {
                         dir('kie-tools') {
