@@ -264,4 +264,4 @@ jobs:
         if: always() && !cancelled()
         shell: bash
         run: |
-          du -sh .
+          df -h .

@@ -15,7 +15,7 @@ runs:
       run: |
         echo "STEP: Print storage usage (before setup)"
         cd ${{ inputs.working_dir }}
-        du -sh .
+        df -h .
 
     - name: "Create temp dir"
       shell: bash
@@ -161,11 +161,3 @@ runs:
         echo "STEP: Print storage usage (after setup)"
         cd ${{ inputs.working_dir }}
         df -h .
-
-    - name: "Print runner machine information"
-      if: runner.os == 'Linux'
-      shell: bash
-      run: |
-        echo "STEP: Print machine information"
-        cat /proc/cpuinfo
-        free -m
