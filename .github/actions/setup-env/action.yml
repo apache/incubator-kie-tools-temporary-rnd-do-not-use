@@ -11,7 +11,7 @@ runs:
   using: "composite"
   steps:
     - name: "Clear storage usage from unnecessary packages"
-      uses: jlumbroso/free-disk-space@v1
+      uses: jlumbroso/free-disk-space@v1.3
       if: runner.os == 'Linux'
       with:
         # this might remove tools that are actually needed,
