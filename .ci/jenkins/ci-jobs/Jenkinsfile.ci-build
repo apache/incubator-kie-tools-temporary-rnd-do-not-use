@@ -147,6 +147,33 @@ pipeline {
                         }
                     }
                 }
+
+                stage('Upload end-to-end tests results to Buildkite (`main` only)') {
+                    when {
+                        expression { !env.CHANGE_ID && env.GIT_BRANCH == 'main' }
+                    }
+                    steps {
+                        dir('kie-tools') {
+                            withCredentials([string(credentialsId: "${pipelineVars.buildKiteTokenCredentialsId}", variable: 'BUILDKITE_ANALYTICS_TOKEN')]) {
+                                sh """#!/bin/bash -el
+                                eval "find -P * -type f ${END_TO_END_TESTS_REPORTS_PATTERNS}"
+                                echo "---------------------------- starting upload -----------------------"
+                                eval "find -P * -type f ${END_TO_END_TESTS_REPORTS_PATTERNS}" | xargs -I{} curl -X POST \
+                                    -H "Authorization: Token token=\"${BUILDKITE_ANALYTICS_TOKEN}\"" \
+                                    -F "format=junit" \
+                                    -F "data=@{}" \
+                                    -F "run_env[CI]=github_actions" \
+                                    -F "run_env[key]=${JOB_NAME}-${BUILD_NUMBER}" \
+                                    -F "run_env[number]=${BUILD_NUMBER}" \
+                                    -F "run_env[branch]=${GIT_BRANCH}" \
+                                    -F "run_env[commit_sha]=${GIT_COMMIT}" \
+                                    -F "run_env[message]=${CHANGE_TITLE}" \
+                                    -F "run_env[url]=https://github.com/${pipelineVars.githubRepositorySlug}/actions/runs/${BUILD_NUMBER}" \
+                                    https://analytics-api.buildkite.com/v1/uploads
+                                """.trim()
+                        }
+                    }
+                }
             }
 
             post {
