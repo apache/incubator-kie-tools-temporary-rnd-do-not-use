@@ -171,6 +171,7 @@ pipeline {
                                     -F "run_env[url]=https://github.com/${pipelineVars.githubRepositorySlug}/actions/runs/${BUILD_NUMBER}" \
                                     https://analytics-api.buildkite.com/v1/uploads
                                 """.trim()
+                            }
                         }
                     }
                 }
