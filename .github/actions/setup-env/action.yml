@@ -10,6 +10,20 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: "Clear storage usage from unnecessary packages"
+      uses: jlumbroso/free-disk-space@v1
+      if: runner.os == 'Linux'
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+        # other packages
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: false
+        swap-storage: false
+
     - name: "Print storage usage (before setup)"
       shell: bash
       run: |
