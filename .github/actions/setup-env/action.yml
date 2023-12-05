@@ -141,6 +141,15 @@ runs:
             fluxbox -display :99 > /dev/null 2>&1 &
         fi
 
+    - name: "Check Xvfb is running (Ubuntu only)"
+      shell: bash
+      run: |
+        echo "STEP: Check Xvfb is running (Ubuntu only)"
+        cd ${{ inputs.working_dir }}
+        if [ "${{ runner.os }}" == "Linux" ]; then
+            ps -aux | grep Xvfb
+        fi
+
     - name: "Configure Pagefile (Windows only)"
       if: runner.os == 'Windows'
       uses: al-cheb/configure-pagefile-action@86589fd789a4de3e62ba628dda2cb10027b66d67 #v1.3
