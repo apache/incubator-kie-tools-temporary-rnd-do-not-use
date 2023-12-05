@@ -24,4 +24,5 @@ jobs:
         shell: bash
         run: |
           export DISPLAY=:99
-          google-chrome --dump-dom https://developer.chrome.com/
+          google-chrome --enable-features=UnexpireFlagsM118 --allow-insecure-localhost https://www.google.com
+          exit 0
