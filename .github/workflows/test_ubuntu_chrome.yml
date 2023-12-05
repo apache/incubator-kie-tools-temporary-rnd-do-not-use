@@ -23,4 +23,5 @@ jobs:
         if: always() && !cancelled()
         shell: bash
         run: |
+          export DISPLAY=:99
           google-chrome --dump-dom https://developer.chrome.com/
