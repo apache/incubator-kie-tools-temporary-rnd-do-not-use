@@ -1,0 +1,20 @@
+name: "CI :: Test Google Chrome"
+
+on:
+  pull_request:
+    branches: ["**"]
+    types: [opened, reopened, ready_for_review, synchronize]
+
+jobs:
+  run:
+    environment: ci
+    if: github.event.pull_request.draft == false
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Try google-chrome"
+        if: always() && !cancelled()
+        shell: bash
+        run: |
+          google-chrome --dump-dom https://developer.chrome.com/
