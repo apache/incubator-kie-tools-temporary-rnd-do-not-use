@@ -44,6 +44,7 @@ export default class Driver {
     // init chrome options
     const chromeOptions: Options = new Options();
     chromeOptions.addArguments(
+      "--headless",
       "--load-extension=" + chromeExtensionPath,
       "--enable-features=UnexpireFlagsM118",
       "--allow-insecure-localhost"
