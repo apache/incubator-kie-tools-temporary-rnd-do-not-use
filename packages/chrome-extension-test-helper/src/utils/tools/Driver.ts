@@ -51,7 +51,8 @@ export default class Driver {
       "--load-extension=" + chromeExtensionPath,
       "--enable-features=UnexpireFlagsM118",
       "--allow-insecure-localhost",
-      "--crash-dumps-dir=/tmp"
+      "--crash-dumps-dir=~/tmp",
+      "--user-data-dir=~/.config/google-chrome"
     );
 
     // init chrome driver log
