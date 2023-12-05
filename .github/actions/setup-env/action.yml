@@ -178,9 +178,3 @@ runs:
         echo "STEP: Print storage usage (after setup)"
         cd ${{ inputs.working_dir }}
         df -h .
-
-    - name: "Debug google-chrome"
-      shell: bash
-      run: |
-        /usr/bin/google-chrome --version
-        chromedriver -v
