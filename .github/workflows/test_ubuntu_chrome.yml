@@ -24,5 +24,5 @@ jobs:
         shell: bash
         run: |
           export DISPLAY=:99
-          google-chrome --headless --remote-debugging-pipe --enable-features=UnexpireFlagsM118 --allow-insecure-localhost
+          google-chrome --headless --enable-features=UnexpireFlagsM118 --allow-insecure-localhost --remote-debugging-pipe 3<input 4>output
           exit 0
