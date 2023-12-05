@@ -46,7 +46,9 @@ export default class Driver {
     chromeOptions.addArguments(
       "--load-extension=" + chromeExtensionPath,
       "--enable-features=UnexpireFlagsM118",
-      "--allow-insecure-localhost"
+      "--allow-insecure-localhost",
+      "--no-sandbox",
+      "--disable-dev-shm-usage"
     );
 
     // init chrome driver log
