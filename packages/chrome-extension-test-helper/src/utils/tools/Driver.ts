@@ -46,8 +46,7 @@ export default class Driver {
     chromeOptions.addArguments(
       "--load-extension=" + chromeExtensionPath,
       "--enable-features=UnexpireFlagsM118",
-      "--allow-insecure-localhost",
-      "--remote-debugging-port=9222"
+      "--allow-insecure-localhost"
     );
 
     // init chrome driver log
