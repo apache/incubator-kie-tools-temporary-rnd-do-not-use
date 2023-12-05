@@ -44,14 +44,9 @@ export default class Driver {
     // init chrome options
     const chromeOptions: Options = new Options();
     chromeOptions.addArguments(
-      "--no-sandbox",
-      "--headless",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
       "--load-extension=" + chromeExtensionPath,
       "--enable-features=UnexpireFlagsM118",
-      "--allow-insecure-localhost",
-      "--remote-debugging-pipe"
+      "--allow-insecure-localhost"
     );
 
     // init chrome driver log
