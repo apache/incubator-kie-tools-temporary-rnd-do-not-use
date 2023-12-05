@@ -44,11 +44,11 @@ export default class Driver {
     // init chrome options
     const chromeOptions: Options = new Options();
     chromeOptions.addArguments(
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
       "--load-extension=" + chromeExtensionPath,
       "--enable-features=UnexpireFlagsM118",
-      "--allow-insecure-localhost",
-      "--no-sandbox",
-      "--disable-dev-shm-usage"
+      "--allow-insecure-localhost"
     );
 
     // init chrome driver log
