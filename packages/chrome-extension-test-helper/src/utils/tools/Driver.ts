@@ -44,15 +44,10 @@ export default class Driver {
     // init chrome options
     const chromeOptions: Options = new Options();
     chromeOptions.addArguments(
-      "headless",
-      "--disable-gpu",
-      "--no-sandbox",
-      "--disable-dev-shm-usage",
       "--load-extension=" + chromeExtensionPath,
       "--enable-features=UnexpireFlagsM118",
       "--allow-insecure-localhost",
-      "--crash-dumps-dir=~/tmp",
-      "--user-data-dir=~/.config/google-chrome"
+      "--remote-debugging-pipe"
     );
 
     // init chrome driver log
