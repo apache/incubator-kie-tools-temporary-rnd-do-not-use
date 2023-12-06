@@ -19,10 +19,26 @@ jobs:
       - name: "Setup environment"
         uses: ./.github/actions/setup-env
 
-      - name: "Try google-chrome"
-        if: always() && !cancelled()
-        shell: bash
-        run: |
-          export DISPLAY=:99
-          google-chrome --headless --enable-features=UnexpireFlagsM118 --allow-insecure-localhost --remote-debugging-pipe 3<input 4>output
-          exit 0
+      - name: "Bootstrap"
+        env:
+          PLAYWRIGHT_BASE__installDeps: "true"
+        uses: ./.github/actions/bootstrap
+
+      - name: "Build"
+        env:
+          WEBPACK__minimize: "false"
+          WEBPACK__tsLoaderTranspileOnly: "false"
+          KIE_TOOLS_BUILD__runLinters: "false"
+          KIE_TOOLS_BUILD__runTests: "false"
+          KIE_TOOLS_BUILD__runEndToEndTests: "true"
+          KIE_TOOLS_BUILD__buildContainerImages: "true"
+          KIE_TOOLS_BUILD__buildExamples: "true"
+          KIE_TOOLS_BUILD__ignoreTestFailures: "true"
+          KIE_TOOLS_BUILD__ignoreEndToEndTestFailures: "false"
+          DISPLAY: ":99"
+          START_SERVER_AND_TEST_INSECURE: "true"
+          NODE_OPTIONS: "--max_old_space_size=4096"
+        run: >-
+          pnpm 
+          -F='!@kie-tools/chrome-extension-pack-kogito-kie-editors' 
+          -r --workspace-concurrency=1 build:prod
