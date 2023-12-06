@@ -50,36 +50,6 @@ runs:
       with:
         maven-version: 3.8.6
 
-    - name: Setup docker (macOS only)
-      if: runner.os == 'macOS'
-      shell: bash
-      env:
-        HOMEBREW_NO_INSTALL_FROM_API:
-      run: |
-        brew untap homebrew/core homebrew/cask
-        brew update
-        brew install docker docker-compose
-        cat >entitlements.xml <<EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>com.apple.security.hypervisor</key>
-            <true/>
-        </dict>
-        </plist>
-        EOF
-
-        codesign --sign - --entitlements entitlements.xml --force /usr/local/bin/qemu-system-$(uname -m | sed -e s/arm64/aarch64/)
-        mkdir -p ~/.docker/cli-plugins
-        ln -sfn $(brew --prefix)/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
-        brew install docker-Buildx
-        ln -sfn $(brew --prefix)/opt/docker-buildx/bin/docker-buildx ~/.docker/cli-plugins/docker-buildx
-        colima stop
-        colima delete
-        colima start --memory 4 --network-address --verbose
-      # QEMU is reinstalled due to this bug: https://github.com/lima-vm/lima/issues/1742
-
     - name: "Setup network timeout"
       shell: bash
       run: |
@@ -96,6 +66,18 @@ runs:
         pnpm -r exec 'bash' '-c' 'echo -B > .mvn/maven.config'
         pnpm -r exec 'bash' '-c' 'echo -ntp >> .mvn/maven.config'
         pnpm -r exec 'bash' '-c' 'echo -Xmx2g > .mvn/jvm.config'
+
+    - name: "Setup DBUS"
+      shell: bash
+      run: |
+        sudo apt update && \
+        sudo apt install -y \
+        dbus-user-session
+
+    - name: "Init DBUS"
+      shell: bash
+      run: |
+        sudo service dbus start
 
     - name: "Install Fluxbox (Ubuntu only)"
       shell: bash
@@ -154,6 +136,13 @@ runs:
           libayatana-appindicator3-dev \
           gir1.2-appindicator3-0.1
         fi
+
+    # - name: "Setup Google Chrome"
+    #   shell: bash
+    #   run: |
+    #     CHROME_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | jq -r .channels.Stable.version) && \
+    #     wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/linux64/chromedriver-linux64.zip && \
+    #     unzip /tmp/chromedriver-linux64.zip -d /tmp && mv /tmp/chromedriver-linux64/chromedriver /usr/bin/
 
     - name: "Print storage usage (after setup)"
       shell: bash

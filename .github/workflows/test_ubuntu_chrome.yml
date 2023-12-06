@@ -39,6 +39,4 @@ jobs:
           START_SERVER_AND_TEST_INSECURE: "true"
           NODE_OPTIONS: "--max_old_space_size=4096"
         run: >-
-          pnpm 
-          -F='@kie-tools/chrome-extension-pack-kogito-kie-editors' 
-          -r --workspace-concurrency=1 build:prod
+          pnpm -F chrome-extension-pack-kogito-kie-editors... -F chrome-extension-serverless-workflow-editor... -r --workspace-concurrency=1 build:prod
