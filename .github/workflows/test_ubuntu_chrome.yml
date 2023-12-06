@@ -40,5 +40,5 @@ jobs:
           NODE_OPTIONS: "--max_old_space_size=4096"
         run: >-
           pnpm 
-          -F='!@kie-tools/chrome-extension-pack-kogito-kie-editors' 
+          -F='@kie-tools/chrome-extension-pack-kogito-kie-editors' 
           -r --workspace-concurrency=1 build:prod
