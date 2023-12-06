@@ -110,7 +110,9 @@ runs:
     - name: "Init DBUS"
       shell: bash
       run: |
-        sudo service dbus start
+        if [ "${{ runner.os }}" == "Linux" ]; then
+          sudo service dbus start
+        fi
 
     - name: "Install Fluxbox (Ubuntu only)"
       shell: bash
