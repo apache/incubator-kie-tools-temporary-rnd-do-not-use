@@ -130,21 +130,21 @@ runs:
           gir1.2-appindicator3-0.1
         fi
 
-    - name: "Setup Google Chrome"
-      shell: bash
-      run: |
-        wget "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
-        sudo dpkg -i google-chrome-stable_current_amd64.deb
-        google-chrome --version
+    # - name: "Setup Google Chrome"
+    #   shell: bash
+    #   run: |
+    #     wget "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
+    #     sudo dpkg -i google-chrome-stable_current_amd64.deb
+    #     google-chrome --version
 
-    - name: "Setup Chromedriver"
-      shell: bash
-      run: |
-        CHROME_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | jq -r .channels.Stable.version) && \
-        wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/linux64/chromedriver-linux64.zip && \
-        unzip /tmp/chromedriver-linux64.zip -d /tmp
-        sudo mv /tmp/chromedriver-linux64/chromedriver /usr/bin/
-        chromedriver -v
+    # - name: "Setup Chromedriver"
+    #   shell: bash
+    #   run: |
+    #     CHROME_VERSION=$(curl https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | jq -r .channels.Stable.version) && \
+    #     wget -O /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/linux64/chromedriver-linux64.zip && \
+    #     unzip /tmp/chromedriver-linux64.zip -d /tmp
+    #     sudo mv /tmp/chromedriver-linux64/chromedriver /usr/bin/
+    #     chromedriver -v
 
     - name: "Print storage usage (after setup)"
       shell: bash
