@@ -33,6 +33,7 @@ pipeline {
                 script {
                     pipelineVars = load '.ci/jenkins/shared-scripts/pipelineVars.groovy'
                     githubUtils = load '.ci/jenkins/shared-scripts/githubUtils.groovy'
+                    sh 'env'
                 }
             }
         }
