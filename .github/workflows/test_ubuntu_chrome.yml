@@ -1,0 +1,59 @@
+name: "CI :: Test Google Chrome"
+
+on:
+  pull_request:
+    branches: ["**"]
+    types: [opened, reopened, ready_for_review, synchronize]
+
+env:
+  TMPDIR: /tmp
+
+jobs:
+  run:
+    environment: ci
+    if: github.event.pull_request.draft == false
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Support longpaths"
+        if: runner.os == 'Windows'
+        run: git config --system core.longpaths true
+
+      - name: "Checkout @ GitHub default"
+        uses: actions/checkout@v3
+
+      - name: "Checkout @ Simulated squashed-merge if PR"
+        id: checkout_pr
+        uses: ./.github/actions/checkout-pr
+        with:
+          ref: ${{ github.base_ref }}
+
+      - name: "Setup CI patterns"
+        id: ci_patterns
+        uses: ./.github/actions/setup-ci-patterns
+
+      - name: "Setup environment"
+        uses: ./.github/actions/setup-env
+
+      - name: "FULL → Bootstrap"
+        env:
+          PLAYWRIGHT_BASE__installDeps: "true"
+        uses: ./.github/actions/bootstrap
+
+      - name: "FULL → Build (without some images)"
+        env:
+          WEBPACK__minimize: "false"
+          WEBPACK__tsLoaderTranspileOnly: "false"
+          KIE_TOOLS_BUILD__runLinters: "true"
+          KIE_TOOLS_BUILD__runTests: "true"
+          KIE_TOOLS_BUILD__runEndToEndTests: ${{ runner.os == 'Linux' }}
+          KIE_TOOLS_BUILD__buildContainerImages: ${{ runner.os != 'Windows' }}
+          KIE_TOOLS_BUILD__buildExamples: "true"
+          KIE_TOOLS_BUILD__ignoreTestFailures: ${{ !github.event.pull_request }}
+          KIE_TOOLS_BUILD__ignoreEndToEndTestFailures: ${{ !github.event.pull_request }}
+          DISPLAY: ":99"
+          START_SERVER_AND_TEST_INSECURE: "true"
+          NODE_OPTIONS: "--max_old_space_size=4096"
+        run: |
+          pnpm -F chrome-extension-pack-kogito-kie-editors... -F chrome-extension-serverless-workflow-editor... -r --workspace-concurrency=1 build:prod
