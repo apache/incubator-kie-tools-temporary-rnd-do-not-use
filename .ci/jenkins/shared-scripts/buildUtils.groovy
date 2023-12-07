@@ -101,10 +101,10 @@ def buildDateTime() {
 }
 
 /**
-* @return String the Apache Jenkins agent nodes with higher capacity (builds22 to builds40)
+* @return String the Apache Jenkins agent nodes with higher capacity (builds22 to builds30)
 **/
 def apacheAgentLabels() {
-    return (22..40).collect{"builds$it"}.join(' || ')
+    return (22..30).collect{"builds$it"}.join(' || ')
 }
 
 return this;

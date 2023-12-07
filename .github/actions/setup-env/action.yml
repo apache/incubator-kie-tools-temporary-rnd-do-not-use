@@ -10,12 +10,22 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: "Clear storage usage from unnecessary packages"
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        echo "Removing large directories"
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /usr/local/.ghcup || true
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /usr/local/lib/android || true
+
     - name: "Print storage usage (before setup)"
       shell: bash
       run: |
         echo "STEP: Print storage usage (before setup)"
         cd ${{ inputs.working_dir }}
-        du -sh .
+        df -h .
 
     - name: "Create temp dir"
       shell: bash
@@ -124,6 +134,15 @@ runs:
             fluxbox -display :99 > /dev/null 2>&1 &
         fi
 
+    - name: "Check Xvfb is running (Ubuntu only)"
+      shell: bash
+      run: |
+        echo "STEP: Check Xvfb is running (Ubuntu only)"
+        cd ${{ inputs.working_dir }}
+        if [ "${{ runner.os }}" == "Linux" ]; then
+            ps -aux | grep Xvfb
+        fi
+
     - name: "Configure Pagefile (Windows only)"
       if: runner.os == 'Windows'
       uses: al-cheb/configure-pagefile-action@86589fd789a4de3e62ba628dda2cb10027b66d67 #v1.3
@@ -160,4 +179,4 @@ runs:
       run: |
         echo "STEP: Print storage usage (after setup)"
         cd ${{ inputs.working_dir }}
-        du -sh .
+        df -h .
